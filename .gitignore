@@ -1,0 +1,16 @@
+.gradle/
+build/
+versions/*/build/
+versions/*/run/
+dist/
+*.hprof
+.idea/
+*.iml
+__pycache__/
+dev/demo/.work/
+dev/demo/out/
+dev/server/.work/
+dev/icon/frames/
+dev/icon/banner_frames/
+dev/icon/contact*.png
+dev/icon/out/

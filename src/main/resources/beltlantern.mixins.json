@@ -1,0 +1,28 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "io.github.profetgit.beltlantern.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "common.CommandsMixin",
+    "common.InventoryMixin",
+    "common.MinecraftServerMixin",
+    "common.PlayerListMixin"
+  ],
+  "client": [
+    "client.AvatarRendererMixin",
+    "client.AvatarRenderStateMixin",
+    "client.BlockStatePredictionHandlerMixin",
+    "client.CameraMixin",
+    "client.ClientLanguageMixin",
+    "client.ClientLevelMixin",
+    "client.LevelRendererMixin",
+    "client.LivingEntityRendererAccessor",
+    "client.LivingEntityRendererMixin",
+    "client.MinecraftMixin",
+    "client.OptionsMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

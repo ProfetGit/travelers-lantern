@@ -1,0 +1,178 @@
+{
+  "id": "beltlantern",
+  "user": "LanternCam",
+  "out_prop": "beltlantern.demo",
+  "scenes_prop": "beltlantern.demo.scenes",
+  "props": {
+    "beltlantern.demo.frames": "{frames}",
+    "beltlantern.demo.cam": "{cam}",
+    "modtest.tickrate": "{tickrate}",
+    "beltlantern.tune.damp": "{damp}",
+    "beltlantern.tune.carry": "{carry}",
+    "beltlantern.tune.friction": "{friction}",
+    "beltlantern.tune.bounce": "{bounce}"
+  },
+  "defaults": {
+    "frames": "false",
+    "cam": "side",
+    "tickrate": "",
+    "damp": "1.8",
+    "carry": "0.5",
+    "friction": "0.5",
+    "bounce": "0.15"
+  },
+  "world": "dev/demo/.work/world-{mc}",
+  "world_fallback": "dev/demo/.work/world-26.3",
+  "options": {
+    "fps": 60,
+    "volume": 0.0001,
+    "render_distance": 6
+  },
+  "log_errors": "Belt Lantern: .*(failed|cannot)",
+  "scenes": [
+    "hang",
+    "idle",
+    "walk",
+    "sprint",
+    "jump",
+    "turn",
+    "sneak",
+    "light",
+    "off",
+    "death",
+    "keep"
+  ],
+  "smoke": [
+    "hang",
+    "walk",
+    "off"
+  ],
+  "addons": {
+    "fa": {
+      "profile": {
+        "26.2": "DH 26.2",
+        "26.3": "Fabric 26.3"
+      },
+      "mods": [
+        "entity_model_features-*.jar",
+        "entity_texture_features-*.jar"
+      ],
+      "packs": [
+        "FreshAnimations_*.zip",
+        "FA+Player-*.zip"
+      ]
+    },
+    "profile": {
+      "profile": {
+        "26.3": "Fabric 26.3"
+      },
+      "mods": [
+        "sodium-*.jar",
+        "iris-*.jar",
+        "entity_model_features-*.jar",
+        "entity_texture_features-*.jar",
+        "skinlayers3d-*.jar",
+        "fabric-api-*.jar"
+      ],
+      "packs": [
+        "FreshAnimations_*.zip",
+        "FA+Player-*.zip"
+      ]
+    },
+    "shaders": {
+      "profile": {
+        "26.3": "Fabric 26.3"
+      },
+      "mods": [
+        "sodium-*.jar",
+        "iris-*.jar",
+        "entity_model_features-*.jar",
+        "entity_texture_features-*.jar",
+        "skinlayers3d-*.jar",
+        "fabric-api-*.jar"
+      ],
+      "packs": [
+        "FreshAnimations_*.zip",
+        "FA+Player-*.zip"
+      ],
+      "shaders": true
+    }
+  },
+  "tiers": {
+    "quick": {
+      "jobs": [
+        {
+          "mc": "26.3",
+          "loader": "fabric",
+          "scenes": "smoke"
+        }
+      ]
+    },
+    "full": {
+      "jobs": [
+        {
+          "mc": [
+            "26.3",
+            "26.2"
+          ],
+          "loader": "fabric",
+          "scenes": "all"
+        },
+        {
+          "mc": "26.3",
+          "loader": "fabric",
+          "scenes": "all",
+          "addons": [
+            "fa"
+          ]
+        },
+        {
+          "mc": [
+            "26.3",
+            "26.2"
+          ],
+          "loader": [
+            "neoforge",
+            "forge"
+          ],
+          "scenes": "smoke"
+        }
+      ]
+    },
+    "release": {
+      "jobs": [
+        {
+          "mc": [
+            "26.3",
+            "26.2"
+          ],
+          "loader": [
+            "fabric",
+            "neoforge",
+            "forge"
+          ],
+          "scenes": "all"
+        },
+        {
+          "mc": [
+            "26.3",
+            "26.2"
+          ],
+          "loader": "fabric",
+          "scenes": "all",
+          "addons": [
+            "fa"
+          ]
+        },
+        {
+          "mc": "26.3",
+          "loader": "fabric",
+          "scenes": "all",
+          "addons": [
+            "profile"
+          ]
+        }
+      ]
+    }
+  }
+}
