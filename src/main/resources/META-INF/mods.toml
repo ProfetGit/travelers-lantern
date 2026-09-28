@@ -8,6 +8,8 @@ version = "${version}"
 displayName = "${name}"
 authors = "${author}"
 displayURL = "${homepage}"
+logoFile = "assets/travelers_lantern/icon.png"
+logoBlur = false
 description = '''${description}'''
 displayTest = "IGNORE_ALL_VERSION"
 

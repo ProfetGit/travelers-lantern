@@ -5,6 +5,7 @@
   "name": "${name}",
   "description": "${description}",
   "authors": ["${author}"],
+  "icon": "assets/travelers_lantern/icon.png",
   "contact": { "homepage": "${homepage}" },
   "license": "LicenseRef-All-Rights-Reserved",
   "environment": "*",
