@@ -19,7 +19,7 @@ tasks.register<Copy>("dist") {
         val p = project(":${v.project}")
         dependsOn(p.tasks.named("build"))
         from(p.layout.buildDirectory.dir("libs")) {
-            include("beltlantern-*.jar")
+            include("travelers_lantern-*.jar")
             exclude("*-sources.jar", "*-dev.jar")
         }
     }
@@ -27,7 +27,7 @@ tasks.register<Copy>("dist") {
     doFirst { delete(layout.projectDirectory.dir("dist")) }
 }
 
-// Compile-time stand-ins for the optional Sodium and Iris classes Belt Lantern hooks (dev/stubs). Never shipped: the
+// Compile-time stand-ins for the optional Sodium and Iris classes Traveler's Lantern hooks (dev/stubs). Never shipped: the
 // mixins that use them target those mods by name (@Pseudo) and do nothing when they're not installed.
 tasks.register<JavaCompile>("compatStubs") {
     source(fileTree("dev/stubs"))

@@ -1,18 +1,18 @@
 {
-  "id": "beltlantern",
+  "id": "travelers_lantern",
   "user": "LanternCam",
-  "out_prop": "beltlantern.demo",
-  "scenes_prop": "beltlantern.demo.scenes",
+  "out_prop": "travelers_lantern.demo",
+  "scenes_prop": "travelers_lantern.demo.scenes",
   "props": {
-    "beltlantern.demo.frames": "{frames}",
-    "beltlantern.demo.cam": "{cam}",
+    "travelers_lantern.demo.frames": "{frames}",
+    "travelers_lantern.demo.cam": "{cam}",
     "modtest.tickrate": "{tickrate}",
-    "beltlantern.tune.damp": "{damp}",
-    "beltlantern.tune.carry": "{carry}",
-    "beltlantern.tune.friction": "{friction}",
-    "beltlantern.tune.bounce": "{bounce}",
-    "beltlantern.demo.smooth": "{smooth}",
-    "beltlantern.demo.rate": "{rate}"
+    "travelers_lantern.tune.damp": "{damp}",
+    "travelers_lantern.tune.carry": "{carry}",
+    "travelers_lantern.tune.friction": "{friction}",
+    "travelers_lantern.tune.bounce": "{bounce}",
+    "travelers_lantern.demo.smooth": "{smooth}",
+    "travelers_lantern.demo.rate": "{rate}"
   },
   "defaults": {
     "frames": "false",
@@ -32,7 +32,7 @@
     "volume": 0.0001,
     "render_distance": 6
   },
-  "log_errors": "Belt Lantern: .*(failed|cannot)",
+  "log_errors": "Traveler's Lantern: .*(failed|cannot)",
   "scenes": [
     "hang",
     "idle",

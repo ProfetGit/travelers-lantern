@@ -3,7 +3,7 @@ loaderVersion = "[1,)"
 license = "All Rights Reserved"
 
 [[mods]]
-modId = "beltlantern"
+modId = "travelers_lantern"
 version = "${version}"
 displayName = "${name}"
 authors = "${author}"
@@ -12,9 +12,9 @@ description = '''${description}'''
 displayTest = "IGNORE_ALL_VERSION"
 
 [[mixins]]
-config = "beltlantern.mixins.json"
+config = "travelers_lantern.mixins.json"
 
-[[dependencies.beltlantern]]
+[[dependencies.travelers_lantern]]
 modId = "minecraft"
 type = "required"
 versionRange = "[${mc},${mc_next})"

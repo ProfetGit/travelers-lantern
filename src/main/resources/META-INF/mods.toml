@@ -3,7 +3,7 @@ loaderVersion = "[0,)"
 license = "All Rights Reserved"
 
 [[mods]]
-modId = "beltlantern"
+modId = "travelers_lantern"
 version = "${version}"
 displayName = "${name}"
 authors = "${author}"
@@ -11,7 +11,7 @@ displayURL = "${homepage}"
 description = '''${description}'''
 displayTest = "IGNORE_ALL_VERSION"
 
-[[dependencies.beltlantern]]
+[[dependencies.travelers_lantern]]
 modId = "minecraft"
 mandatory = true
 versionRange = "[${mc},${mc_next})"

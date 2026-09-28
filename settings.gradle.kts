@@ -24,4 +24,4 @@ stonecutter {
     }
 }
 
-rootProject.name = "beltlantern"
+rootProject.name = "travelers_lantern"

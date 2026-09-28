@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Belt Lantern on real servers, off-screen: the mod on the client only, on both sides, and on the server only.
+"""Traveler's Lantern on real servers, off-screen: the mod on the client only, on both sides, and on the server only.
 
 mp.py [--mc 26.3] [--loader fabric] [--case client_only,both,server_only]
 
@@ -9,9 +9,9 @@ client_only  a vanilla dedicated server; the modded client hangs a lantern (clie
 both         the modded server with two modded clients: LanternCam wears and walks, LanternFriend watches. Checks:
              the wearer's checks, the watcher draws the wearer's lantern, both clients light lanterns themselves, so
              the server shows neither a light block, and the world was never touched.
-server_only  the modded server and a vanilla client: /beltlantern run for it from the console hangs the lantern; the
+server_only  the modded server and a vanilla client: /travelerslantern run for it from the console hangs the lantern; the
              server shows that client a light block (and only it: the world stays air), and takes it back after
-             /beltlantern again; the client stays connected and both logs stay clean.
+             /travelerslantern again; the client stays connected and both logs stay clean.
 Work dirs: dev/server/.work/mp-<case>-<mc>-<loader>.
 """
 import argparse
@@ -44,7 +44,7 @@ FAMILY = {"fabric": "fabric", "quilt": "fabric", "neoforge": "neoforge", "forge"
 
 def jar(mc: str, loader: str) -> Path:
     b = f"{mc}-{FAMILY[loader]}"
-    hits = sorted((ROOT / "versions" / b / "build/libs").glob(f"beltlantern-*+{b}.jar"))
+    hits = sorted((ROOT / "versions" / b / "build/libs").glob(f"travelers_lantern-*+{b}.jar"))
     if not hits:
         sys.exit(f"no jar for {b}: build it first")
     return hits[-1]
@@ -102,10 +102,10 @@ class Server:
         return bool(m and m.group(1) == "passed")
 
     def status(self) -> str | None:
-        """/beltlantern light from the console: lit lanterns and the light blocks shown to players."""
+        """/travelerslantern light from the console: lit lanterns and the light blocks shown to players."""
         n = len(self.text())
-        self.send("beltlantern light")
-        m = self.wait(r"Belt lantern light is \w+: (.*)", 10, n)
+        self.send("travelerslantern light")
+        m = self.wait(r"Traveler's Lantern light is \w+: (.*)", 10, n)
         return m.group(1) if m else None
 
     def stop(self):
@@ -136,7 +136,7 @@ def run_case(case: str, mc: str, loader: str, port: int) -> tuple[bool, list[str
     modded_server = case != "client_only"
     modded_client = case != "server_only"
     scmd = ms.command(mc, loader, work / "server") if modded_server else vanilla_cmd(mc, work / "server")
-    with slots.slot("server", f"BeltLantern mp {case} {mc}-{loader}"):
+    with slots.slot("server", f"TravelersLantern mp {case} {mc}-{loader}"):
         srv = Server(work / "server", scmd, port, jar(mc, loader) if modded_server else None)
         try:
             if not srv.wait(r"Done \(\d", 240):
@@ -146,13 +146,13 @@ def run_case(case: str, mc: str, loader: str, port: int) -> tuple[bool, list[str
             def run_client(name, uuid, role, seconds):
                 props = {}
                 if modded_client:
-                    props = {"beltlantern.demo": str(work / f"out-{role}"), "beltlantern.demo.mp": role, "beltlantern.demo.frames": "false",
-                             "beltlantern.demo.mp.seconds": str(seconds), "beltlantern.demo.mp.players": "2" if case == "both" else "1",
+                    props = {"travelers_lantern.demo": str(work / f"out-{role}"), "travelers_lantern.demo.mp": role, "travelers_lantern.demo.frames": "false",
+                             "travelers_lantern.demo.mp.seconds": str(seconds), "travelers_lantern.demo.mp.players": "2" if case == "both" else "1",
                              "modtest.audit": "1"}
                 results[role] = client.run(mc=mc, loader=loader if modded_client else "vanilla", out=work / f"out-{role}",
                                            game=work / f"game-{role}", mod_jars=[jar(mc, loader)] if modded_client else [], props=props,
                                            join=f"127.0.0.1:{port}", options={"fps": 60, "volume": 0.0001, "render_distance": 6},
-                                           timeout=seconds + 150, user=name, uuid=uuid, label=f"BeltLantern mp {case} {role}")
+                                           timeout=seconds + 150, user=name, uuid=uuid, label=f"TravelersLantern mp {case} {role}")
 
             threads = []
             wear = threading.Thread(target=run_client, args=(*WEAR, "wear", 60))
@@ -173,7 +173,7 @@ def run_case(case: str, mc: str, loader: str, port: int) -> tuple[bool, list[str
                     srv.send("tp LanternFriend 3.5 -60 -5.5 facing entity LanternCam")
                 if case == "server_only":
                     time.sleep(12)
-                    srv.send("execute as LanternCam run beltlantern")
+                    srv.send("execute as LanternCam run travelerslantern")
                     time.sleep(1.5)
                     st = srv.status()
                     shown = bool(st and re.search(r"1 lanterns lit, 1 light blocks shown to 1 players", st))
@@ -182,7 +182,7 @@ def run_case(case: str, mc: str, loader: str, port: int) -> tuple[bool, list[str
                     world = srv.test("execute at LanternCam if block ~ ~ ~ minecraft:air")
                     notes.append(("PASS " if world else "FAIL ") + "server_only/world  the world keeps air at the player's feet")
                     ok &= world
-                    srv.send("execute as LanternCam run beltlantern")
+                    srv.send("execute as LanternCam run travelerslantern")
                     time.sleep(1.5)
                     st = srv.status()
                     back = bool(st and re.search(r"0 lanterns lit, 0 light blocks shown", st))

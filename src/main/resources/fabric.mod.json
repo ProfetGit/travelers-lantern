@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "id": "beltlantern",
+  "id": "travelers_lantern",
   "version": "${version}",
   "name": "${name}",
   "description": "${description}",
@@ -9,9 +9,9 @@
   "license": "LicenseRef-All-Rights-Reserved",
   "environment": "*",
   "entrypoints": {
-    "main": ["io.github.profetgit.beltlantern.platform.fabric.FabricEntry"]
+    "main": ["io.github.profetgit.travelerslantern.platform.fabric.FabricEntry"]
   },
-  "mixins": ["beltlantern.mixins.json"],
+  "mixins": ["travelers_lantern.mixins.json"],
   "depends": {
     "fabricloader": ">=${fabric_loader}",
     "minecraft": "~${mc}",
