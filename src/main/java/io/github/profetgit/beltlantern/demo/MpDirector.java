@@ -3,7 +3,6 @@ package io.github.profetgit.beltlantern.demo;
 import io.github.profetgit.beltlantern.Lanterns;
 import io.github.profetgit.beltlantern.client.BeltClient;
 import io.github.profetgit.beltlantern.client.BeltLayer;
-import io.github.profetgit.beltlantern.client.GhostLight;
 import io.github.profetgit.beltlantern.client.Keys;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.KeyMapping;
@@ -22,7 +21,9 @@ import net.minecraft.world.level.block.Blocks;
 final class MpDirector {
     static final String ROLE = System.getProperty("beltlantern.demo.mp", "wear");
     static final int SECONDS = Integer.getInteger("beltlantern.demo.mp.seconds", 60);
-    static int tick = -1, drawnAtStart, othersAtStart;
+    /** Players the wearer waits for (itself and any watchers) before it starts, at most two minutes. */
+    static final int PLAYERS = Integer.getInteger("beltlantern.demo.mp.players", 1);
+    static int tick = -1, drawnAtStart, othersAtStart, startAt = -1;
     /** The script reads these lines to check the server's side. */
     static BlockPos lastLight;
 
@@ -43,12 +44,22 @@ final class MpDirector {
             if (tick >= SECONDS * 20) {
                 int n = BeltLayer.drawnOthers - othersAtStart;
                 Director.check("mp", "sees_other", n > 0, n + " lanterns drawn on other players");
+                int lit = io.github.profetgit.beltlantern.client.DynamicLight.mostOthers;
+                Director.check("mp", "lights_other", lit > 0, lit + " other players' lanterns lit at once by this client");
                 Director.finish();
             }
             return;
         }
         boolean serverMod = BeltClient.serverHasMod();
-        int t = tick - 100; // the script ops the player and gives it two lanterns first
+        // the script ops the player and gives it two lanterns first; a watcher must be in before anything happens
+        if (startAt < 0) {
+            if (tick >= 100 && (mc.level.players().size() >= PLAYERS || tick > 2400)) {
+                startAt = tick;
+                System.out.println("[bldemo] starting with " + mc.level.players().size() + " players in view");
+            }
+            return;
+        }
+        int t = tick - startAt;
         if (t == 0) {
             drawnAtStart = BeltLayer.drawnLocal;
             mc.player.getInventory().setSelectedSlot(0);
@@ -67,8 +78,9 @@ final class MpDirector {
         if (t == 90) Director.release(mc);
         if (t == 110) {
             lightCheck(mc, serverMod, "light_moved");
-            int lights = lightsNear(mc);
-            check(mc, "one_light", lights == 1, lights + " light blocks near the player after walking");
+            check(mc, "rebuilt", io.github.profetgit.beltlantern.client.DynamicLight.busyTicks > 10,
+                io.github.profetgit.beltlantern.client.DynamicLight.busyTicks + " ticks rebuilt the light, "
+                    + io.github.profetgit.beltlantern.client.DynamicLight.rebuilt + " sections");
         }
         if (t == 120) KeyMapping.click(Keys.TOGGLE.getDefaultKey());
         if (t == 150) {
@@ -82,14 +94,22 @@ final class MpDirector {
         if (t == 170) Director.finish();
     }
 
+    /** This client lights its own lantern: the player and the ground beside it are lit, and no light block is involved. */
     static void lightCheck(Minecraft mc, boolean serverMod, String name) {
-        BlockPos at = BlockPos.containing(mc.player.position().add(0, 0.6, 0));
-        int bl = mc.level.getBrightness(LightLayer.BLOCK, at);
-        BlockPos cell = serverMod ? nearestLight(mc) : GhostLight.cell();
-        lastLight = cell;
-        boolean isLight = cell != null && mc.level.getBlockState(cell).is(Blocks.LIGHT);
-        check(mc, name, isLight && bl >= 13, (serverMod ? "server" : "client-side") + " light at " + cell + ", block light " + bl + " at the player");
-        if (cell != null) System.out.println("[bldemo] light cell " + cell.getX() + " " + cell.getY() + " " + cell.getZ() + " " + name);
+        float partial = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
+        int self = mc.getEntityRenderDispatcher().getPackedLightCoords(mc.player, partial);
+        BlockPos ground = mc.player.blockPosition().relative(net.minecraft.core.Direction.NORTH, 2);
+        int floor = net.minecraft.util.LightCoordsUtil.getLightCoords(mc.level, ground);
+        int blocks = lightsNear(mc);
+        check(mc, name, (self & 0xFFFF) >= 13 * 16 && (floor & 0xFFFF) >= 9 * 16 && blocks == 0,
+            String.format(java.util.Locale.ROOT, "player lit %.2f, ground %.2f, %d light blocks on this client (server mod %b)",
+                (self & 0xFFFF) / 16F, (floor & 0xFFFF) / 16F, blocks, serverMod));
+        net.minecraft.world.phys.Vec3 bob = io.github.profetgit.beltlantern.client.Swing.bobOf(mc.player.getId());
+        if (bob != null) {
+            BlockPos c = BlockPos.containing(bob);
+            lastLight = c;
+            System.out.println("[bldemo] lantern cell " + c.getX() + " " + c.getY() + " " + c.getZ() + " " + name);
+        }
     }
 
     static BlockPos nearestLight(Minecraft mc) {

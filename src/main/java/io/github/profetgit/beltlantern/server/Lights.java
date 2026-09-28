@@ -9,6 +9,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
+import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -22,28 +24,33 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Real light for belt lanterns: an invisible light block in the cell the lantern is in (or the wearer's feet or head
- * cell), moved along as they walk. Only air and still water are used, and only ever-our-own light blocks are taken
- * back: anything a player or the world put in the cell since wins. Two wearers in one cell share it (the brighter
- * lantern counts). The blocks are set without neighbour or shape updates, so observers, redstone and water don't
- * react to them.
+ * Belt-lantern light for players whose client doesn't draw it: the server tells their client there is a light block in
+ * the lantern's cell (or the wearer's feet or head cell), and takes it back when the lantern moves on. Nothing is placed
+ * in the world, so nothing is left behind and nothing else sees it. Only air and still water cells are used. Clients
+ * with the mod light every lantern themselves, smoothly (DynamicLight); they say so with /beltlantern client smooth.
+ * A client says blocks (or nothing: a client without the mod) and gets these.
  */
 public final class Lights {
     static final int FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
-    /** Per dimension: our light cells by position. */
-    private static final Map<ResourceKey<Level>, Map<Long, Cell>> CELLS = new HashMap<>();
-    /** Per wearer: the cell they light. */
-    private static final Map<UUID, Claim> CLAIMS = new HashMap<>();
-    /** Dimensions whose saved record was checked since the server started. */
+    /** Every how many ticks a player's fake lights are sent again (a chunk that reloaded on their client lost them). */
+    static final int RESEND = 40;
+    /** Players whose client lights belt lanterns itself. */
+    private static final Set<UUID> SMOOTH = new HashSet<>();
+    /** Per wearer: the cell their lantern lights. */
+    private static final Map<UUID, Cell> CELLS = new HashMap<>();
+    /** Per viewer: the fake light blocks their client has now, and the dimension they were sent in. */
+    private static final Map<UUID, Sent> SENT = new HashMap<>();
+    /** Dimensions whose saved record of 0.1.0's world light blocks was checked since the server started. */
     private static final Set<ResourceKey<Level>> SWEPT = new HashSet<>();
     private static int ticks;
 
-    private static final class Cell {
-        int level;
-        final Map<UUID, Integer> owners = new HashMap<>();
+    private record Cell(ResourceKey<Level> dim, long pos, int level) {
     }
 
-    private record Claim(ServerLevel level, long pos) {
+    private static final class Sent {
+        ResourceKey<Level> dim;
+        final Map<Long, BlockState> blocks = new HashMap<>();
+        final Map<Long, Integer> at = new HashMap<>();
     }
 
     private Lights() {
@@ -53,171 +60,143 @@ public final class Lights {
         ticks++;
         boolean on = Config.get().light;
         Set<UUID> online = new HashSet<>();
+        // each wearer's cell
         for (ServerPlayer p : server.getPlayerList().getPlayers()) {
             online.add(p.getUUID());
             ServerLevel level = p.level();
-            if (SWEPT.add(level.dimension())) sweep(level);
+            if (SWEPT.add(level.dimension()) || ticks % 20 == 0) sweep(level);
             ItemStack belt = Belt.get(p);
             int lv = on && !belt.isEmpty() && p.isAlive() && !p.isSpectator() ? Lanterns.light(belt) : 0;
-            Claim c = CLAIMS.get(p.getUUID());
-            if (lv == 0) {
-                if (c != null) release(p.getUUID());
-                continue;
-            }
-            BlockPos target = choose(p, level, c);
-            if (c != null && valid(c) && c.level() == level && target != null && c.pos() == target.asLong()) {
-                Cell cell = cell(level, c.pos());
-                if (cell.owners.getOrDefault(p.getUUID(), 0) != lv) {
-                    cell.owners.put(p.getUUID(), lv);
-                    refresh(level, BlockPos.of(c.pos()), cell);
-                }
-                continue;
-            }
-            // the new cell lights up before the old one goes dark, in the same tick
-            Claim old = CLAIMS.remove(p.getUUID());
-            if (target != null) claim(p.getUUID(), level, target, lv);
-            if (old != null) unclaim(p.getUUID(), old);
+            BlockPos target = lv > 0 ? choose(p, level, CELLS.get(p.getUUID())) : null;
+            if (target == null) CELLS.remove(p.getUUID());
+            else CELLS.put(p.getUUID(), new Cell(level.dimension(), target.asLong(), lv));
         }
-        for (Iterator<UUID> it = CLAIMS.keySet().iterator(); it.hasNext(); ) {
-            UUID id = it.next();
-            if (online.contains(id)) continue;
-            Claim c = CLAIMS.get(id);
-            it.remove();
-            unclaim(id, c);
+        CELLS.keySet().retainAll(online);
+        SMOOTH.retainAll(online);
+        SENT.keySet().retainAll(online);
+        // the cells per dimension, the brighter lantern winning a shared cell
+        Map<ResourceKey<Level>, Map<Long, Integer>> want = new HashMap<>();
+        for (Cell c : CELLS.values()) want.computeIfAbsent(c.dim(), k -> new HashMap<>()).merge(c.pos(), c.level(), Math::max);
+        // what each viewer without the mod's own light is shown
+        for (ServerPlayer viewer : server.getPlayerList().getPlayers()) {
+            boolean shows = !SMOOTH.contains(viewer.getUUID());
+            Sent sent = SENT.computeIfAbsent(viewer.getUUID(), k -> new Sent());
+            ServerLevel level = viewer.level();
+            if (sent.dim != level.dimension()) {
+                // a new dimension: the client dropped the old world, fakes and all
+                sent.blocks.clear();
+                sent.at.clear();
+                sent.dim = level.dimension();
+            }
+            Map<Long, Integer> cells = shows ? want.getOrDefault(level.dimension(), Map.of()) : Map.of();
+            for (Map.Entry<Long, Integer> e : cells.entrySet()) {
+                BlockPos pos = BlockPos.of(e.getKey());
+                if (!tracks(viewer, pos)) continue;
+                BlockState real = level.getBlockState(pos);
+                BlockState fake = Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, e.getValue())
+                    .setValue(LightBlock.WATERLOGGED, real.is(Blocks.WATER));
+                Integer when = sent.at.get(e.getKey());
+                if (fake.equals(sent.blocks.get(e.getKey())) && when != null && ticks - when < RESEND) continue;
+                viewer.connection.send(new ClientboundBlockUpdatePacket(pos, fake));
+                sent.blocks.put(e.getKey(), fake);
+                sent.at.put(e.getKey(), ticks);
+            }
+            for (Iterator<Long> it = sent.blocks.keySet().iterator(); it.hasNext(); ) {
+                long p = it.next();
+                if (cells.containsKey(p)) continue;
+                BlockPos pos = BlockPos.of(p);
+                // the real block again (air, water, or whatever took the cell)
+                if (tracks(viewer, pos)) viewer.connection.send(new ClientboundBlockUpdatePacket(level, pos));
+                it.remove();
+                sent.at.remove(p);
+            }
         }
-        if (ticks % 20 == 0) for (ServerLevel level : server.getAllLevels()) if (SWEPT.contains(level.dimension())) sweep(level);
     }
 
-    /** The first usable cell of: the lantern's cell, the feet cell, the head cell. The current cell counts as usable. */
-    private static BlockPos choose(ServerPlayer p, ServerLevel level, Claim current) {
+    private static boolean tracks(ServerPlayer viewer, BlockPos pos) {
+        return viewer.getChunkTrackingView().contains(SectionPos.blockToSectionCoord(pos.getX()), SectionPos.blockToSectionCoord(pos.getZ()));
+    }
+
+    /** The first usable cell of: the lantern's cell, the feet cell, the head cell; the current cell while it's one of them. */
+    private static BlockPos choose(ServerPlayer p, ServerLevel level, Cell current) {
         double yaw = Math.toRadians(p.yBodyRot);
-        Vec3 lantern = p.position().add(-Math.sin(yaw) * 0.15, p.getBbHeight() * 0.32, Math.cos(yaw) * 0.15);
+        Vec3 lantern = p.position().add(Math.cos(yaw) * 0.3, p.getBbHeight() * 0.32, Math.sin(yaw) * 0.3);
         BlockPos[] tries = {BlockPos.containing(lantern), p.blockPosition(), BlockPos.containing(p.getEyePosition())};
         for (BlockPos pos : tries) {
-            if (current != null && current.level() == level && current.pos() == pos.asLong() && valid(current)) return pos;
-            if (usable(level, pos)) return pos;
+            if (current != null && current.dim() == level.dimension() && current.pos() == pos.asLong() && usable(level, pos)) return pos;
         }
+        for (BlockPos pos : tries) if (usable(level, pos)) return pos;
         return null;
     }
 
     private static boolean usable(ServerLevel level, BlockPos pos) {
         if (!level.isInWorldBounds(pos) || !level.isLoaded(pos)) return false;
         BlockState s = level.getBlockState(pos);
-        if (s.isAir()) return true;
-        if (s.is(Blocks.LIGHT)) return cell(level, pos.asLong()) != null;
-        return s.is(Blocks.WATER) && s.getFluidState().isSource();
+        return s.isAir() || s.is(Blocks.WATER) && s.getFluidState().isSource();
     }
 
-    /** Still our light block (nothing replaced it). */
-    private static boolean valid(Claim c) {
-        Cell cell = cell(c.level(), c.pos());
-        if (cell == null) return false;
-        BlockPos pos = BlockPos.of(c.pos());
-        if (!c.level().isLoaded(pos)) return false;
-        if (c.level().getBlockState(pos).is(Blocks.LIGHT)) return true;
-        // replaced (a placed block, a piston, flowing water): forget the cell without touching it
-        CELLS.get(c.level().dimension()).remove(c.pos());
-        LightRecord.of(c.level()).remove(c.pos());
-        return false;
-    }
-
-    private static Cell cell(ServerLevel level, long pos) {
-        Map<Long, Cell> cells = CELLS.get(level.dimension());
-        return cells == null ? null : cells.get(pos);
-    }
-
-    private static void claim(UUID who, ServerLevel level, BlockPos pos, int lv) {
-        Map<Long, Cell> cells = CELLS.computeIfAbsent(level.dimension(), k -> new HashMap<>());
-        Cell cell = cells.get(pos.asLong());
-        if (cell == null) {
-            cell = new Cell();
-            cell.owners.put(who, lv);
-            cell.level = lv;
-            cells.put(pos.asLong(), cell);
-            boolean water = level.getBlockState(pos).is(Blocks.WATER);
-            level.setBlock(pos, Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, lv).setValue(LightBlock.WATERLOGGED, water), FLAGS);
-            LightRecord.of(level).add(pos.asLong());
+    /** /beltlantern client smooth|blocks: whether this player's client draws the light itself. */
+    public static void setSmooth(ServerPlayer p, boolean smooth) {
+        if (smooth) {
+            SMOOTH.add(p.getUUID());
+            // take back what was already sent (the next tick sees nothing to show and restores the real blocks)
         } else {
-            cell.owners.put(who, lv);
-            refresh(level, pos, cell);
+            SMOOTH.remove(p.getUUID());
         }
-        CLAIMS.put(who, new Claim(level, pos.asLong()));
-    }
-
-    /** The cell shows its brightest owner's lantern. */
-    private static void refresh(ServerLevel level, BlockPos pos, Cell cell) {
-        int max = 0;
-        for (int v : cell.owners.values()) max = Math.max(max, v);
-        if (max == cell.level) return;
-        cell.level = max;
-        BlockState s = level.getBlockState(pos);
-        if (s.is(Blocks.LIGHT)) level.setBlock(pos, s.setValue(LightBlock.LEVEL, max), FLAGS);
     }
 
     public static void release(UUID who) {
-        Claim c = CLAIMS.remove(who);
-        if (c != null) unclaim(who, c);
+        CELLS.remove(who);
+        SENT.remove(who);
+        SMOOTH.remove(who);
     }
 
-    private static void unclaim(UUID who, Claim c) {
-        Map<Long, Cell> cells = CELLS.get(c.level().dimension());
-        Cell cell = cells == null ? null : cells.get(c.pos());
-        if (cell == null) return;
-        cell.owners.remove(who);
-        BlockPos pos = BlockPos.of(c.pos());
-        if (!cell.owners.isEmpty()) {
-            refresh(c.level(), pos, cell);
-            return;
-        }
-        cells.remove(c.pos());
-        // an unloaded cell stays in the record; the sweep puts it back once it loads
-        if (c.level().isLoaded(pos)) putBack(c.level(), pos);
-    }
-
-    /** Our light block back to what it replaced: water if it's (still) waterlogged, else air. */
-    private static void putBack(ServerLevel level, BlockPos pos) {
-        BlockState s = level.getBlockState(pos);
-        if (s.is(Blocks.LIGHT)) {
-            level.setBlock(pos, s.getValue(LightBlock.WATERLOGGED) ? Blocks.WATER.defaultBlockState() : Blocks.AIR.defaultBlockState(), FLAGS);
-        }
-        LightRecord.of(level).remove(pos.asLong());
-    }
-
-    /** Recorded cells that are no longer in use (left by a crash, or unloaded when released) go back once loaded. */
+    /** 0.1.0 placed real light blocks and recorded them; any left (a crash) go back to air or water once loaded. */
     private static void sweep(ServerLevel level) {
         LightRecord rec = LightRecord.of(level);
         if (rec.positions.isEmpty()) return;
-        Map<Long, Cell> cells = CELLS.get(level.dimension());
-        long[] todo = rec.positions.toLongArray();
-        for (long p : todo) {
-            if (cells != null && cells.containsKey(p)) continue;
+        for (long p : rec.positions.toLongArray()) {
             BlockPos pos = BlockPos.of(p);
-            if (level.isLoaded(pos)) putBack(level, pos);
+            if (!level.isLoaded(pos)) continue;
+            BlockState s = level.getBlockState(pos);
+            if (s.is(Blocks.LIGHT)) {
+                level.setBlock(pos, s.getValue(LightBlock.WATERLOGGED) ? Blocks.WATER.defaultBlockState() : Blocks.AIR.defaultBlockState(), FLAGS);
+            }
+            rec.remove(p);
         }
     }
 
-    /** Server stopping: every light goes back before the world is saved. */
-    public static void releaseAll() {
-        for (UUID id : new HashSet<>(CLAIMS.keySet())) release(id);
+    public static void clear() {
         CELLS.clear();
-        CLAIMS.clear();
+        SENT.clear();
+        SMOOTH.clear();
         SWEPT.clear();
     }
 
-    /** /beltlantern light false: every light goes back now. */
-    public static void releaseAllNow() {
-        for (UUID id : new HashSet<>(CLAIMS.keySet())) release(id);
+    /** For /beltlantern light and the tests: lit cells, and fake light blocks sent to players now. */
+    public static String status() {
+        int fakes = 0, viewers = 0;
+        for (Sent s : SENT.values()) {
+            fakes += s.blocks.size();
+            if (!s.blocks.isEmpty()) viewers++;
+        }
+        return CELLS.size() + " lanterns lit, " + fakes + " light blocks shown to " + viewers + " players without the mod's own light, "
+            + SMOOTH.size() + " players light them themselves";
     }
 
-    /** Test hook: how many cells are lit in a dimension. */
-    public static int count(ServerLevel level) {
-        Map<Long, Cell> cells = CELLS.get(level.dimension());
-        return cells == null ? 0 : cells.size();
-    }
-
-    /** Test hook: the cell a wearer lights, or null. */
+    /** Test hook: the cell a wearer's lantern lights, or null. */
     public static BlockPos cellOf(UUID who) {
-        Claim c = CLAIMS.get(who);
+        Cell c = CELLS.get(who);
         return c == null ? null : BlockPos.of(c.pos());
+    }
+
+    /** Test hook: fake light blocks a viewer's client has now. */
+    public static int shownTo(UUID viewer) {
+        Sent s = SENT.get(viewer);
+        return s == null ? 0 : s.blocks.size();
+    }
+
+    public static boolean smooth(UUID viewer) {
+        return SMOOTH.contains(viewer);
     }
 }

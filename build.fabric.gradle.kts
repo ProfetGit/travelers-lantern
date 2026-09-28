@@ -17,6 +17,7 @@ repositories {
 }
 
 dependencies {
+    compileOnly(files(rootProject.layout.buildDirectory.dir("compat-stubs")).builtBy(rootProject.tasks.named("compatStubs")))
     minecraft("com.mojang:minecraft:$mc")
     implementation("net.fabricmc:fabric-loader:${property("deps.fabric_loader")}")
     // optional: Mod Menu's settings button; compile only, not shipped or required

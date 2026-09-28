@@ -4,12 +4,14 @@
 mp.py [--mc 26.3] [--loader fabric] [--case client_only,both,server_only]
 
 client_only  a vanilla dedicated server; the modded client hangs a lantern (client-only belt: the lantern leaves the
-             hand for the inventory), walks, takes it off. Checks: its own checks (results.json) and, on the server,
-             that its light block never existed there.
+             hand for the inventory), walks, takes it off. Checks: its own checks (results.json: its own smooth light,
+             no light blocks) and, on the server, that the world was never touched.
 both         the modded server with two modded clients: LanternCam wears and walks, LanternFriend watches. Checks:
-             the wearer's checks, the watcher draws the wearer's lantern, and the server has the light block.
-server_only  the modded server and a vanilla client: /beltlantern run for it from the console hangs the lantern and
-             lights its cell; the client stays connected and both logs stay clean.
+             the wearer's checks, the watcher draws the wearer's lantern, both clients light lanterns themselves, so
+             the server shows neither a light block, and the world was never touched.
+server_only  the modded server and a vanilla client: /beltlantern run for it from the console hangs the lantern; the
+             server shows that client a light block (and only it: the world stays air), and takes it back after
+             /beltlantern again; the client stays connected and both logs stay clean.
 Work dirs: dev/server/.work/mp-<case>-<mc>-<loader>.
 """
 import argparse
@@ -99,6 +101,13 @@ class Server:
         m = self.wait(r"Test (passed|failed)", 10, n)
         return bool(m and m.group(1) == "passed")
 
+    def status(self) -> str | None:
+        """/beltlantern light from the console: lit lanterns and the light blocks shown to players."""
+        n = len(self.text())
+        self.send("beltlantern light")
+        m = self.wait(r"Belt lantern light is \w+: (.*)", 10, n)
+        return m.group(1) if m else None
+
     def stop(self):
         try:
             self.send("stop")
@@ -138,7 +147,8 @@ def run_case(case: str, mc: str, loader: str, port: int) -> tuple[bool, list[str
                 props = {}
                 if modded_client:
                     props = {"beltlantern.demo": str(work / f"out-{role}"), "beltlantern.demo.mp": role, "beltlantern.demo.frames": "false",
-                             "beltlantern.demo.mp.seconds": str(seconds), "modtest.audit": "1"}
+                             "beltlantern.demo.mp.seconds": str(seconds), "beltlantern.demo.mp.players": "2" if case == "both" else "1",
+                             "modtest.audit": "1"}
                 results[role] = client.run(mc=mc, loader=loader if modded_client else "vanilla", out=work / f"out-{role}",
                                            game=work / f"game-{role}", mod_jars=[jar(mc, loader)] if modded_client else [], props=props,
                                            join=f"127.0.0.1:{port}", options={"fps": 60, "volume": 0.0001, "render_distance": 6},
@@ -150,7 +160,7 @@ def run_case(case: str, mc: str, loader: str, port: int) -> tuple[bool, list[str
             threads.append(wear)
             if case == "both":
                 time.sleep(3)
-                t = threading.Thread(target=run_client, args=(*WATCH, "watch", 25))
+                t = threading.Thread(target=run_client, args=(*WATCH, "watch", 30))
                 t.start()
                 threads.append(t)
             if not srv.wait(r"LanternCam joined the game", 300):
@@ -165,27 +175,36 @@ def run_case(case: str, mc: str, loader: str, port: int) -> tuple[bool, list[str
                     time.sleep(12)
                     srv.send("execute as LanternCam run beltlantern")
                     time.sleep(1.5)
-                    lit = srv.test("execute at LanternCam if block ~ ~ ~ minecraft:light")
-                    notes.append(("PASS " if lit else "FAIL ") + "server_only/light  light block at the vanilla player's feet")
-                    ok &= lit
+                    st = srv.status()
+                    shown = bool(st and re.search(r"1 lanterns lit, 1 light blocks shown to 1 players", st))
+                    notes.append(("PASS " if shown else "FAIL ") + f"server_only/shown  {st}")
+                    ok &= shown
+                    world = srv.test("execute at LanternCam if block ~ ~ ~ minecraft:air")
+                    notes.append(("PASS " if world else "FAIL ") + "server_only/world  the world keeps air at the player's feet")
+                    ok &= world
                     srv.send("execute as LanternCam run beltlantern")
                     time.sleep(1.5)
-                    dark = srv.test("execute at LanternCam if block ~ ~ ~ minecraft:air")
-                    notes.append(("PASS " if dark else "FAIL ") + "server_only/dark  the cell is air again after /beltlantern")
-                    ok &= dark
+                    st = srv.status()
+                    back = bool(st and re.search(r"0 lanterns lit, 0 light blocks shown", st))
+                    notes.append(("PASS " if back else "FAIL ") + f"server_only/taken_back  {st}")
+                    ok &= back
                 else:
                     game = work / "game-wear"
-                    m = watch_client_log(game, r"light cell (-?\d+) (-?\d+) (-?\d+) light_moved", 200)
+                    m = watch_client_log(game, r"lantern cell (-?\d+) (-?\d+) (-?\d+) light_moved", 200)
                     if not m:
-                        notes.append("FAIL server/light_cell  the client logged no light cell")
+                        notes.append("FAIL server/cell  the client logged no lantern cell")
                         ok = False
                     else:
                         x, y, z = m.groups()
-                        want = "minecraft:light" if modded_server else "minecraft:air"
-                        good = srv.test(f"execute if block {x} {y} {z} {want}")
-                        what = "the server has the light block" if modded_server else "the server never had the client-side light"
-                        notes.append(("PASS " if good else "FAIL ") + f"server/light  {what} ({x} {y} {z} is {want})")
+                        good = srv.test(f"execute if block {x} {y} {z} minecraft:air")
+                        notes.append(("PASS " if good else "FAIL ") + f"server/world  no light block in the world at the lantern ({x} {y} {z} is air)")
                         ok &= good
+                    if modded_server:
+                        st = srv.status()
+                        clients = 2 if case == "both" else 1
+                        quiet = bool(st and re.search(rf"0 light blocks shown to 0 players without the mod's own light, {clients} players light them", st))
+                        notes.append(("PASS " if quiet else "FAIL ") + f"server/no_fakes  {st}")
+                        ok &= quiet
             for t in threads:
                 t.join(600)
         finally:

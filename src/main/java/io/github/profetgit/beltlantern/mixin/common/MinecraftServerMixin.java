@@ -20,10 +20,10 @@ public abstract class MinecraftServerMixin {
         Lights.tick(server);
     }
 
-    /** Every light block goes back before the worlds are saved. */
+    /** A stopped server forgets its players (singleplayer starts the next world in the same game). */
     @Inject(method = "stopServer", at = @At("HEAD"))
     private void beltlantern$stop(CallbackInfo ci) {
-        Lights.releaseAll();
+        Lights.clear();
         Belt.clear();
     }
 }

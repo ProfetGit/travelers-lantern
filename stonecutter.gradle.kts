@@ -26,3 +26,14 @@ tasks.register<Copy>("dist") {
     into(layout.projectDirectory.dir("dist"))
     doFirst { delete(layout.projectDirectory.dir("dist")) }
 }
+
+// Compile-time stand-ins for the optional Sodium and Iris classes Belt Lantern hooks (dev/stubs). Never shipped: the
+// mixins that use them target those mods by name (@Pseudo) and do nothing when they're not installed.
+tasks.register<JavaCompile>("compatStubs") {
+    source(fileTree("dev/stubs"))
+    classpath = files()
+    destinationDirectory = layout.buildDirectory.dir("compat-stubs")
+    sourceCompatibility = "21"
+    targetCompatibility = "21"
+    options.release = 21
+}

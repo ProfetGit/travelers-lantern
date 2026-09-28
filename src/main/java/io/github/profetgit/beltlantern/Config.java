@@ -7,10 +7,23 @@ import java.nio.file.Path;
 
 /** Settings in config/beltlantern.json (the game directory; on a server, the server directory). */
 public final class Config {
-    /** Server: a belt lantern lights the world around its wearer (an invisible light block that follows them). */
+    /**
+     * Server: belt lanterns light up for players without the mod too (the server shows them an invisible light block
+     * that follows the lantern; nothing is placed in the world). Players with the mod light every lantern themselves.
+     */
     public boolean light = true;
-    /** Client, on servers without the mod: the lantern lights what you see (only on your screen). */
+    /** Client: belt lanterns light what you see. */
     public boolean clientLight = true;
+    /**
+     * Client: the light moves smoothly with the lantern (chunk meshes near it are rebuilt as it moves). Off, it moves a
+     * block at a time: a light block only this client has, or the server's (cheaper on slow machines).
+     */
+    public boolean smoothLight = true;
+    /**
+     * Client: how often smooth light follows a moving lantern (20 to 60 times a second). Each update rebuilds the chunk
+     * meshes around the lantern, so a higher rate looks smoother and costs more.
+     */
+    public int lightUpdatesPerSecond = 60;
     /** Client, on servers without the mod: the belt is on (it shows a lantern from your inventory). */
     public boolean clientBelt = false;
     /** Client: the lantern hangs on the left hip (false: the right one). */
@@ -38,6 +51,12 @@ public final class Config {
             BeltLantern.LOG.warn("Belt Lantern: cannot read {}, using defaults ({})", f, e.toString());
         }
         current = c == null ? new Config() : c;
+        // dev runs (ModTest) pick the light model without touching the player's config
+        String smooth = System.getProperty("beltlantern.demo.smooth", "");
+        if (!smooth.isEmpty()) current.smoothLight = Boolean.parseBoolean(smooth);
+        String rate = System.getProperty("beltlantern.demo.rate", "");
+        if (!rate.isEmpty()) current.lightUpdatesPerSecond = Integer.parseInt(rate);
+        current.lightUpdatesPerSecond = Math.max(20, Math.min(60, current.lightUpdatesPerSecond));
         save();
     }
 

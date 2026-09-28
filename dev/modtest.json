@@ -10,7 +10,9 @@
     "beltlantern.tune.damp": "{damp}",
     "beltlantern.tune.carry": "{carry}",
     "beltlantern.tune.friction": "{friction}",
-    "beltlantern.tune.bounce": "{bounce}"
+    "beltlantern.tune.bounce": "{bounce}",
+    "beltlantern.demo.smooth": "{smooth}",
+    "beltlantern.demo.rate": "{rate}"
   },
   "defaults": {
     "frames": "false",
@@ -19,7 +21,9 @@
     "damp": "1.8",
     "carry": "0.5",
     "friction": "0.5",
-    "bounce": "0.15"
+    "bounce": "0.15",
+    "smooth": "",
+    "rate": ""
   },
   "world": "dev/demo/.work/world-{mc}",
   "world_fallback": "dev/demo/.work/world-26.3",

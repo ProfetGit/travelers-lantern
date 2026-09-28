@@ -30,6 +30,7 @@ repositories {
 }
 
 dependencies {
+    compileOnly(files(rootProject.layout.buildDirectory.dir("compat-stubs")).builtBy(rootProject.tasks.named("compatStubs")))
     implementation(minecraft.dependency("net.minecraftforge:forge:$mc-${property("deps.forge")}"))
 }
 

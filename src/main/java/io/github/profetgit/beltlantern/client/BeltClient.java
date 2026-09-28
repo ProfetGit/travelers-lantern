@@ -13,11 +13,18 @@ import net.minecraft.world.item.ItemStack;
 /**
  * Client side. Which belt counts depends on the server: when the server has the mod (it lists /beltlantern among its
  * commands; singleplayer always does), the belt is the server's and the key runs the command. On any other server the
- * belt is this client's own (VirtualBelt) and its light is the client-side one (GhostLight).
+ * belt is this client's own (VirtualBelt). Either way this client lights every belt lantern it sees itself
+ * (DynamicLight); with smooth light off, it takes the server's light blocks, or on a server without the mod its own
+ * (GhostLight).
  */
 public final class BeltClient {
     private static boolean serverMod;
     private static boolean worldPass;
+    /** The connection that was last told how this client lights lanterns, and what it was told. */
+    private static Object told;
+    private static boolean toldSmooth;
+    /** Test hook: frames Iris's off-hand light was the belt lantern. */
+    public static long irisHeld;
 
     private BeltClient() {
     }
@@ -39,7 +46,15 @@ public final class BeltClient {
             if (serverMod) c.sendCommand(BeltLantern.COMMAND);
             else VirtualBelt.toggle(mc, p);
         }
-        GhostLight.tick(mc, !serverMod);
+        // a server with the mod shows light blocks only to clients that don't draw the light themselves
+        boolean smooth = DynamicLight.enabled();
+        if (serverMod && (told != c || toldSmooth != smooth)) {
+            c.sendCommand(BeltLantern.COMMAND + " client " + (smooth ? "smooth" : "blocks"));
+            told = c;
+            toldSmooth = smooth;
+        }
+        GhostLight.tick(mc, !serverMod && !smooth);
+        DynamicLight.tick(mc);
     }
 
     /** What hangs on this entity's belt. */

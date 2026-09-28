@@ -20,6 +20,12 @@ public abstract class MinecraftMixin {
         BeltClient.tick((Minecraft) (Object) this);
     }
 
+    /** Smooth light can follow a lantern more often than once a tick. */
+    @Inject(method = "runTick", at = @At("HEAD"))
+    private void beltlantern$frame(boolean advanceGameTime, CallbackInfo ci) {
+        io.github.profetgit.beltlantern.client.DynamicLight.frame((Minecraft) (Object) this);
+    }
+
     /** Drives the dev demo (ModTest); inert unless the game runs with -Dbeltlantern.demo. */
     @Inject(method = "tick", at = @At("TAIL"))
     private void beltlantern$demoTick(CallbackInfo ci) {

@@ -10,17 +10,23 @@
     "common.PlayerListMixin"
   ],
   "client": [
-    "client.AvatarRendererMixin",
     "client.AvatarRenderStateMixin",
+    "client.AvatarRendererMixin",
     "client.BlockStatePredictionHandlerMixin",
     "client.CameraMixin",
     "client.ClientLanguageMixin",
     "client.ClientLevelMixin",
+    "client.EntityRendererMixin",
     "client.LevelRendererMixin",
+    "client.LightCoordsUtilMixin",
     "client.LivingEntityRendererAccessor",
     "client.LivingEntityRendererMixin",
     "client.MinecraftMixin",
-    "client.OptionsMixin"
+    "client.OptionsMixin",
+    "client.compat.IrisHeldItemMixin",
+    "client.compat.SodiumFlatFluidLightPipelineMixin",
+    "client.compat.SodiumFlatLightPipelineMixin",
+    "client.compat.SodiumSmoothLightPipelineMixin"
   ],
   "injectors": {
     "defaultRequire": 1

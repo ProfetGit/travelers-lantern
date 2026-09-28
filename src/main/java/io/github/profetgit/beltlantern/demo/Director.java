@@ -5,6 +5,7 @@ import io.github.profetgit.beltlantern.BeltLantern;
 import io.github.profetgit.beltlantern.Lanterns;
 import io.github.profetgit.beltlantern.client.BeltClient;
 import io.github.profetgit.beltlantern.client.BeltLayer;
+import io.github.profetgit.beltlantern.client.DynamicLight;
 import io.github.profetgit.beltlantern.client.Keys;
 import io.github.profetgit.beltlantern.client.Swing;
 import io.github.profetgit.beltlantern.server.Belt;
@@ -67,6 +68,7 @@ public final class Director {
     /** Largest and last rod angle from straight down (degrees) and largest twist, per scene. */
     static double maxAngle, lastAngle, maxTwist, walkAngle, restLo, restHi, restSpread;
     static int drawnAtStart;
+    static long busyAtStart, busyAtWalkEnd;
 
     private Director() {
     }
@@ -159,7 +161,13 @@ public final class Director {
             case "hang", "off" -> {
                 if (t == 2) KeyMapping.click(Keys.TOGGLE.getDefaultKey());
             }
-            case "walk", "light" -> hold(o.keyUp, t < 60);
+            case "walk" -> hold(o.keyUp, t < 60);
+            case "light" -> {
+                hold(o.keyUp, t < 60);
+                if (t == 0) busyAtStart = DynamicLight.busyTicks;
+                // the lantern still settles for a moment after the stop; count from when it hangs still
+                if (t == 95) busyAtWalkEnd = DynamicLight.busyTicks;
+            }
             case "sprint" -> {
                 hold(o.keyUp, t < 60);
                 hold(o.keySprint, t < 60);
@@ -213,12 +221,11 @@ public final class Director {
                 boolean listed = java.util.Arrays.asList(mc.options.keyMappings).contains(Keys.TOGGLE);
                 String label = net.minecraft.network.chat.Component.translatable(Keys.TOGGLE.getName()).getString();
                 check("key", listed && label.startsWith("Belt lantern"), "in Controls " + listed + ", named '" + label + "', bound to " + Keys.TOGGLE.getTranslatedKeyMessage().getString());
-                onServer(mc, "light", sp -> {
-                    BlockPos c = Lights.cellOf(sp.getUUID());
-                    return c != null && sp.level().getBlockState(c).is(Blocks.LIGHT);
-                }, sp -> "light cell " + Lights.cellOf(sp.getUUID()));
-                BlockPos c = serverCell(mc);
-                check("client_light", c != null && mc.level.getBlockState(c).is(Blocks.LIGHT), "client block at " + c + ": " + (c == null ? "-" : mc.level.getBlockState(c)));
+                // this client draws the light itself: the server lights the cell but shows it no light block
+                onServer(mc, "light", sp -> Lights.cellOf(sp.getUUID()) != null && Lights.smooth(sp.getUUID()) && Lights.shownTo(sp.getUUID()) == 0
+                    && !sp.level().getBlockState(Lights.cellOf(sp.getUUID())).is(Blocks.LIGHT),
+                    sp -> "cell " + Lights.cellOf(sp.getUUID()) + ", " + Lights.status());
+                lightChecks(mc, "client_light");
             }
             case "idle" -> check("settled", restSpread < 1 && lastAngle < 15,
                 String.format(Locale.ROOT, "rod %.1f deg from straight down at rest (moves %.2f deg over the last second), max %.1f", lastAngle, restSpread, maxAngle));
@@ -230,22 +237,32 @@ public final class Director {
             case "turn" -> check("twist", maxTwist > 8 && maxTwist < 111, String.format(Locale.ROOT, "lantern lagged the turn by up to %.1f deg", maxTwist));
             case "sneak" -> check("drawn", drawn > 0, drawn + " lantern draws");
             case "light" -> {
-                BlockPos at = BlockPos.containing(mc.player.position().add(0, 0.6, 0));
-                int bl = mc.level.getBrightness(LightLayer.BLOCK, at);
-                check("lit", bl >= 13, "block light " + bl + " at the player (night)");
-                onServer(mc, "one_cell", sp -> Lights.count(sp.level()) == 1, sp -> Lights.count(sp.level()) + " light cells after walking");
+                lightChecks(mc, "lit");
+                if (present("net.caffeinemc.mods.sodium.client.model.light.smooth.SmoothLightPipeline")) {
+                    long q = io.github.profetgit.beltlantern.client.SodiumLight.quads;
+                    check("sodium", q > 0, q + " quads lit through Sodium's pipeline");
+                }
+                if (shadersOn()) {
+                    check("iris", BeltClient.irisHeld > 0, BeltClient.irisHeld + " updates where the shader's off-hand light was the belt lantern");
+                }
+                long moved = DynamicLight.busyTicks - busyAtWalkEnd;
+                check("still_is_free", moved == 0, moved + " light rebuilds while standing still after the walk");
+                check("walk_rebuilds", busyAtWalkEnd - busyAtStart > 10, (busyAtWalkEnd - busyAtStart) + " ticks rebuilt light while walking ("
+                    + DynamicLight.rebuilt + " sections so far)");
             }
             case "off" -> {
                 onServer(mc, "belt_empty", sp -> sp.getItemBySlot(Belt.SLOT).isEmpty(), sp -> "server belt: " + sp.getItemBySlot(Belt.SLOT));
                 check("in_hand", Lanterns.is(mc.player.getMainHandItem()) || count(mc.player.getInventory().getNonEquipmentItems()) == 2,
                     "hand " + mc.player.getMainHandItem() + ", " + count(mc.player.getInventory().getNonEquipmentItems()) + " in the inventory");
-                onServer(mc, "no_light", sp -> Lights.count(sp.level()) == 0 && lightsNear(sp) == 0,
-                    sp -> Lights.count(sp.level()) + " cells, " + lightsNear(sp) + " light blocks near the player");
+                onServer(mc, "no_light", sp -> Lights.cellOf(sp.getUUID()) == null && lightsNear(sp) == 0,
+                    sp -> Lights.status() + ", " + lightsNear(sp) + " light blocks near the player");
                 check("client_off", BeltClient.beltOf(mc.player).isEmpty(), "client belt " + BeltClient.beltOf(mc.player));
+                check("light_gone", !DynamicLight.active() && DynamicLight.at(mc.player.getX(), mc.player.getY() + 0.6, mc.player.getZ()) == 0,
+                    "dynamic light " + DynamicLight.at(mc.player.getX(), mc.player.getY() + 0.6, mc.player.getZ()));
             }
             case "death" -> {
                 onServer(mc, "belt_empty", sp -> sp.getItemBySlot(Belt.SLOT).isEmpty(), sp -> "respawned belt: " + sp.getItemBySlot(Belt.SLOT));
-                onServer(mc, "no_light", sp -> Lights.count(sp.level()) == 0 && lightsNear(sp) == 0, sp -> Lights.count(sp.level()) + " cells");
+                onServer(mc, "no_light", sp -> Lights.cellOf(sp.getUUID()) == null && lightsNear(sp) == 0, sp -> Lights.status());
             }
             case "keep" -> {
                 onServer(mc, "kept", sp -> Lanterns.is(sp.getItemBySlot(Belt.SLOT)), sp -> "respawned belt: " + sp.getItemBySlot(Belt.SLOT));
@@ -253,6 +270,49 @@ public final class Director {
             }
             default -> {
             }
+        }
+    }
+
+    /**
+     * The belt lantern lights the player (the entity light the renderer uses) and the ground beside it (the light a
+     * chunk mesh is built with), and this client has no light block of its own there.
+     */
+    static void lightChecks(Minecraft mc, String name) {
+        float partial = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
+        int self = mc.getEntityRenderDispatcher().getPackedLightCoords(mc.player, partial);
+        BlockPos ground = mc.player.blockPosition().relative(net.minecraft.core.Direction.NORTH, 2);
+        int floor = net.minecraft.util.LightCoordsUtil.getLightCoords(mc.level, ground);
+        int blocks = lightBlocks(mc);
+        check(name, (self & 0xFFFF) >= 13 * 16 && (floor & 0xFFFF) >= 9 * 16 && blocks == 0,
+            String.format(Locale.ROOT, "player lit %.2f, ground 2 blocks off %.2f (sixteenths of block light), %d light blocks on this client",
+                (self & 0xFFFF) / 16F, (floor & 0xFFFF) / 16F, blocks));
+    }
+
+    static int lightBlocks(Minecraft mc) {
+        int n = 0;
+        for (BlockPos p : BlockPos.betweenClosed(mc.player.blockPosition().offset(-4, -3, -4), mc.player.blockPosition().offset(4, 4, 4))) {
+            if (mc.level.getBlockState(p).is(Blocks.LIGHT)) n++;
+        }
+        return n;
+    }
+
+    /** Iris is installed and a shader pack is on (by reflection: Iris stays optional). */
+    static boolean shadersOn() {
+        try {
+            Class<?> api = Class.forName("net.irisshaders.iris.api.v0.IrisApi", false, Director.class.getClassLoader());
+            Object inst = api.getMethod("getInstance").invoke(null);
+            return (Boolean) api.getMethod("isShaderPackInUse").invoke(inst);
+        } catch (ReflectiveOperationException | LinkageError e) {
+            return false;
+        }
+    }
+
+    static boolean present(String cls) {
+        try {
+            Class.forName(cls, false, Director.class.getClassLoader());
+            return true;
+        } catch (ClassNotFoundException | LinkageError e) {
+            return false;
         }
     }
 
@@ -312,6 +372,11 @@ public final class Director {
     /** Side-on follow camera (CameraMixin, after the game placed its third-person camera). */
     public static double[] camera(Entity e, float partial) {
         if (!recording || e != Minecraft.getInstance().player) return null;
+        if ("fixed".equals(CAM)) {
+            // still, above the walk's lantern side, looking down at the ground the light slides over
+            double dx = 0, dy = -3.2, dz = 6.5;
+            return new double[] {7.5, G + 4.2, -6, (float) Math.toDegrees(Math.atan2(-dx, dz)), (float) Math.toDegrees(-Math.atan2(dy, Math.hypot(dx, dz)))};
+        }
         double x = Mth.lerp(partial, e.xo, e.getX()), y = Mth.lerp(partial, e.yo, e.getY()), z = Mth.lerp(partial, e.zo, e.getZ());
         // offsets from the player (who faces east, +x; the lantern hangs on the north side, -z), aimed at the hip
         double[] off = switch (CAM) {

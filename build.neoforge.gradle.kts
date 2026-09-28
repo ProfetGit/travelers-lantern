@@ -62,6 +62,7 @@ repositories {
 }
 
 dependencies {
+    compileOnly(files(rootProject.layout.buildDirectory.dir("compat-stubs")).builtBy(rootProject.tasks.named("compatStubs")))
     testImplementation(platform("org.junit:junit-bom:5.13.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("org.junit.jupiter:junit-jupiter-params")
