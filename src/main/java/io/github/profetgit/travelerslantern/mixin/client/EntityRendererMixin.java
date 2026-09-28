@@ -9,8 +9,11 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/** Entities near a belt lantern are lit by it (at their exact position, so the light slides smoothly over them). */
-@Mixin(EntityRenderer.class)
+/**
+ * Entities near a belt lantern are lit by it (at their exact position, so the light slides smoothly over them).
+ * Priority 900: ETF sets this return value too (its light override), and applied before ours it wiped the lantern light.
+ */
+@Mixin(value = EntityRenderer.class, priority = 900)
 public abstract class EntityRendererMixin {
     @Inject(method = "getPackedLightCoords", at = @At("RETURN"), cancellable = true)
     private void travelerslantern$dynamic(Entity entity, float partial, CallbackInfoReturnable<Integer> cir) {
