@@ -194,6 +194,12 @@ public final class DynamicLight {
         return on;
     }
 
+    /** Test hook: where an entity's lantern light is now, or null. */
+    public static Vec3 sourceOf(int entityId) {
+        Lit l = LIT.get(entityId);
+        return l == null ? null : new Vec3(l.x(), l.y(), l.z());
+    }
+
     private static double sq(double x, double y, double z) {
         return x * x + y * y + z * z;
     }

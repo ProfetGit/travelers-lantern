@@ -37,6 +37,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Dev-only scene director and check runner; does nothing unless the JVM runs with -Dbeltlantern.demo=<dir> (ModTest).
@@ -133,7 +134,7 @@ public final class Director {
     static int length(String s) {
         return switch (s) {
             case "hang", "off" -> 40;
-            case "idle", "turn", "sneak" -> 90;
+            case "idle", "turn", "sneak", "fp" -> 90;
             case "walk", "light" -> 110;
             case "sprint", "jump" -> 120;
             case "death", "keep" -> 90;
@@ -182,6 +183,18 @@ public final class Director {
                 float yaw = -90 + 180 * Mth.clamp((t - 10) / 5F, 0, 1) - 180 * Mth.clamp((t - 50) / 5F, 0, 1);
                 mc.player.setYRot(yaw);
                 mc.player.setYHeadRot(yaw);
+            }
+            case "fp" -> {
+                // third person, then first person while walking on: the light must keep up with the player
+                if (t == 20) mc.options.setCameraType(CameraType.FIRST_PERSON);
+                hold(o.keyUp, t >= 30 && t < 70);
+                if (t == 80) {
+                    Vec3 src = DynamicLight.sourceOf(mc.player.getId());
+                    double off = src == null ? 99 : src.distanceTo(mc.player.position().add(0, mc.player.getBbHeight() * 0.32, 0));
+                    check("fp_follows", off < 0.8, src == null ? "no light source" : String.format(Locale.ROOT,
+                        "light %.2f blocks from the hip after walking in first person", off));
+                }
+                if (t == 85) mc.options.setCameraType(CameraType.THIRD_PERSON_BACK);
             }
             case "sneak" -> {
                 hold(o.keyShift, t < 70);

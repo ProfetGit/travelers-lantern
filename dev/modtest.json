@@ -40,6 +40,7 @@
     "sprint",
     "jump",
     "turn",
+    "fp",
     "sneak",
     "light",
     "off",

@@ -64,7 +64,8 @@ public final class Swing {
     double lox, loy, loz;
     /** Stride phase (radians) and strength (0 to 1) at the last step, and where the hook was with the stride added. */
     double phase, stride, sx, sy, sz;
-    int seen;
+    /** Frames when this swing was last drawn, and last stepped (drawn in the world pass). */
+    int seen, stepped = -1000;
     double lastClink = -10, impact;
     /** The last rod direction in the hook's own frame, reused by passes that don't step (GUI, shadows). */
     final Vector3f local = new Vector3f(0, 1, 0);
@@ -91,10 +92,14 @@ public final class Swing {
         if ((frame & 255) == 0) ALL.values().removeIf(s -> frame - s.seen > 600);
     }
 
-    /** The weight's world position for an entity simulated in the last half second, or null. */
+    /**
+     * The weight's world position for an entity whose swing moved in the last couple of frames, or null. Being drawn
+     * isn't enough: a shader pack's shadow pass draws you in first person too, but only the world pass moves the swing,
+     * and a frozen swing kept the light where you last were in third person.
+     */
     public static Vec3 bobOf(int entityId) {
         Swing s = ALL.get(entityId);
-        if (s == null || s.t < 0 || frame - s.seen > 30) return null;
+        if (s == null || s.t < 0 || frame - s.stepped > 2) return null;
         return new Vec3(s.bx, s.by, s.bz);
     }
 
@@ -117,7 +122,10 @@ public final class Swing {
                                      float walkPos, float walkSpeed, float hips, float side) {
         Swing s = ALL.computeIfAbsent(id, k -> new Swing());
         s.seen = frame;
-        if (world) s.step(age / 20.0, bodyRotDeg, ox, oy, oz, hook, toWorld, boxes, length, radius, walkPos * 0.6662, Math.min(1, walkSpeed) * hips, side);
+        if (world) {
+            s.step(age / 20.0, bodyRotDeg, ox, oy, oz, hook, toWorld, boxes, length, radius, walkPos * 0.6662, Math.min(1, walkSpeed) * hips, side);
+            s.stepped = frame;
+        }
         return new Quaternionf().rotationTo(0, 1, 0, s.local.x, s.local.y, s.local.z).rotateY(s.twist);
     }
 
