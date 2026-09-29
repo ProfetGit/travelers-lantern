@@ -61,6 +61,51 @@ public final class Director {
     });
     static final int G = -10;
     static final java.util.List<Float> stepLight = new java.util.ArrayList<>();
+    /** Scenes played at midnight, where the lantern's light is at full strength. */
+    static final java.util.Set<String> NIGHT = java.util.Set.of("light", "step", "idle");
+    /** Flicker: per tick, the biggest change of the lantern's light at fixed ground corners around the start spot. */
+    static final java.util.List<Float> flicker = new java.util.ArrayList<>();
+    static float[] flickerPrev;
+    static int flickerFlips;
+
+    /**
+     * Samples the lantern's light on the ground 1..5 blocks around the player, at points that move with the player and
+     * turn with its body (Sodium's per-face path and the plain one): walking straight on, nothing there should jump.
+     */
+    static void sampleFlicker(Minecraft mc) {
+        float[] now = new float[2 * 11 * 11];
+        int k = 0;
+        double yaw = Math.toRadians(mc.player.yBodyRot), c = Math.cos(yaw), sn = Math.sin(yaw);
+        for (int a = -5; a <= 5; a++) for (int b = -5; b <= 5; b++) {
+            double x = mc.player.getX() + a * c - b * sn, z = mc.player.getZ() + a * sn + b * c;
+            now[k++] = DynamicLight.atFace(x, G + 1, z, 0, 1, 0);
+            now[k++] = DynamicLight.at(x, G + 1.05, z);
+        }
+        if (flickerPrev != null) {
+            float worst = 0;
+            for (int i = 0; i < now.length; i++) worst = Math.max(worst, Math.abs(now[i] - flickerPrev[i]));
+            // a flip: a corner jumping by 2+ levels one way and straight back the next tick
+            if (flicker.size() >= 1 && flickerPrevDelta != null) {
+                for (int i = 0; i < now.length; i++) {
+                    float d = now[i] - flickerPrev[i], p = flickerPrevDelta[i];
+                    if (Math.abs(d) >= 2 && Math.abs(p) >= 2 && d * p < 0) flickerFlips++;
+                }
+            }
+            float[] delta = new float[now.length];
+            for (int i = 0; i < now.length; i++) delta[i] = now[i] - flickerPrev[i];
+            flickerPrevDelta = delta;
+            flicker.add(worst);
+        }
+        flickerPrev = now;
+    }
+    static float[] flickerPrevDelta;
+
+    static void flickerCheck(String name, int from) {
+        float worst = 0;
+        for (int i = from; i < flicker.size(); i++) worst = Math.max(worst, flicker.get(i));
+        check(name, worst <= 3 && flickerFlips == 0, String.format(Locale.ROOT,
+            "biggest change of the light at a ground corner in one tick %.2f, %d back-and-forth flips of 2+ levels", worst, flickerFlips));
+    }
     static int tick = -1, scene = -1, sceneTick, frame;
     static boolean recording, done, stopped, hudHidden;
     static final AtomicInteger pending = new AtomicInteger();
@@ -147,7 +192,9 @@ public final class Director {
     static void startScene(Minecraft mc, String s) {
         String p = name(mc);
         // every scene starts from the same spot, facing east, standing still
-        cmd(mc, "tp " + p + " 0.5 " + (G + 1) + " 0.5 -90 0", "time set " + ("light".equals(s) || "step".equals(s) ? 18000 : 6000));
+        cmd(mc, "tp " + p + " 0.5 " + (G + 1) + " 0.5 -90 0", "time set " + (NIGHT.contains(s) ? 18000 : 6000));
+        flicker.clear();
+        flickerPrev = null;
         // a 1-block ledge ahead to jump onto (removed again when the scene ends)
         if ("step".equals(s)) {
             cmd(mc, "fill 3 " + (G + 1) + " -4 9 " + (G + 1) + " 4 minecraft:stone");
@@ -165,6 +212,10 @@ public final class Director {
 
     static void tickScene(Minecraft mc, String s, int t) {
         var o = mc.options;
+        if ("idle".equals(s) || "light".equals(s)) {
+            if (t == 0) flickerFlips = 0;
+            sampleFlicker(mc);
+        }
         switch (s) {
             case "hang", "off" -> {
                 if (t == 2) KeyMapping.click(Keys.TOGGLE.getDefaultKey());
@@ -256,8 +307,11 @@ public final class Director {
                     sp -> "cell " + Lights.cellOf(sp.getUUID()) + ", " + Lights.status());
                 lightChecks(mc, "client_light", true);
             }
-            case "idle" -> check("settled", restSpread < 1 && lastAngle < 15,
+            case "idle" -> {
+                flickerCheck("steady_light", 0);
+                check("settled", restSpread < 1 && lastAngle < 15,
                 String.format(Locale.ROOT, "rod %.1f deg from straight down at rest (moves %.2f deg over the last second), max %.1f", lastAngle, restSpread, maxAngle));
+            }
             case "walk", "sprint", "jump" -> {
                 check("swings", walkAngle > 4, String.format(Locale.ROOT, "rod up to %.1f deg while moving, %.1f max overall", walkAngle, maxAngle));
                 check("finite", Double.isFinite(maxAngle) && maxAngle < 120, String.format(Locale.ROOT, "max %.1f deg", maxAngle));
@@ -273,10 +327,14 @@ public final class Director {
                     "on the ledge %b, biggest change of the ledge top's light in one tick %.2f; per tick: %s", onTop, jump, seq.toString().trim()));
                 cmd(mc, "fill 3 " + (G + 1) + " -4 9 " + (G + 1) + " 4 minecraft:air");
             }
-            case "turn" -> check("twist", maxTwist > 8 && maxTwist < 111, String.format(Locale.ROOT, "lantern lagged the turn by up to %.1f deg", maxTwist));
+            case "turn" -> {
+                check("twist", maxTwist > 8 && maxTwist < 111, String.format(Locale.ROOT, "lantern lagged the turn by up to %.1f deg", maxTwist));
+            }
             case "sneak" -> check("drawn", drawn > 0, drawn + " lantern draws");
             case "light" -> {
                 lightChecks(mc, "lit", false);
+                // walking on at night with the lantern swinging, then standing: the light around the player must not jump
+                flickerCheck("steady_light", 3);
                 if (present("net.caffeinemc.mods.sodium.client.model.light.smooth.SmoothLightPipeline")) {
                     long q = io.github.profetgit.travelerslantern.client.SodiumLight.quads;
                     check("sodium", q > 0, q + " quads lit through Sodium's pipeline");
