@@ -51,6 +51,17 @@ Put the jar for your loader in your `mods` folder: Fabric, NeoForge or Forge, fo
 - The light shines through walls, as with other moving-light mods.
 - A soul lantern gives less light than a normal one, just like the blocks.
 
+![More from Profet](https://raw.githubusercontent.com/ProfetGit/travelers-lantern/main/docs/desc/title-more-from-profet.png)
+
+<!-- promo:start -->
+<p align="center">
+<a href="https://www.curseforge.com/minecraft/mc-mods/tidy-pockets"><img src="https://raw.githubusercontent.com/ProfetGit/assets/main/promo/tidy-pockets.gif" alt="Tidy Pockets: One click. All sorted. Client side." width="49%"></a>
+<a href="https://www.curseforge.com/minecraft/mc-mods/having-a-blast"><img src="https://raw.githubusercontent.com/ProfetGit/assets/main/promo/having-a-blast.gif" alt="Having a Blast: One boom. Bouncy blocks. Client or server." width="49%"></a>
+<a href="https://www.curseforge.com/minecraft/mc-mods/far-out-zoom"><img src="https://raw.githubusercontent.com/ProfetGit/assets/main/promo/far-out-zoom.gif" alt="Far Out Zoom: The horizon, up close. Client side." width="49%"></a>
+<a href="https://github.com/ProfetGit/overreacting-mobs"><img src="https://raw.githubusercontent.com/ProfetGit/assets/main/promo/overreacting-mobs.gif" alt="Overreacting Mobs: One hit. Big drama. Client side." width="49%"></a>
+</p>
+<!-- promo:end -->
+
 ![Support](https://raw.githubusercontent.com/ProfetGit/travelers-lantern/main/docs/desc/title-support.png)
 
 Traveler's Lantern is free. If it lights your way, a coffee helps fund the next update.
