@@ -5,7 +5,7 @@ import com.google.gson.GsonBuilder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-/** Settings in config/travelerslantern.json (the game directory; on a server, the server directory). */
+/** Settings in config/travelers_lantern.json (the game directory; on a server, the server directory). */
 public final class Config {
     /**
      * Server: belt lanterns light up for players without the mod too (the server shows them an invisible light block
@@ -24,6 +24,11 @@ public final class Config {
      * meshes around the lantern, so a higher rate looks smoother and costs more.
      */
     public int lightUpdatesPerSecond = 60;
+    /**
+     * Client: the smooth light follows the light around it. In daylight or a lit room it glows softly (about half as
+     * bright, a shorter reach); at night, underground and in the dark it is at full strength and reaches a bit farther.
+     */
+    public boolean adaptiveLight = true;
     /** Client, on servers without the mod: the belt is on (it shows a lantern from your inventory). */
     public boolean clientBelt = false;
     /** Client: the lantern hangs on the left hip (false: the right one). */

@@ -2,10 +2,12 @@ package io.github.profetgit.travelerslantern.client;
 
 import io.github.profetgit.travelerslantern.Config;
 import io.github.profetgit.travelerslantern.Lanterns;
+import it.unimi.dsi.fastutil.ints.Int2FloatOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -22,12 +24,20 @@ import net.minecraft.world.phys.Vec3;
  * updates a second and 2.1 at 60); with r = 7.5 that is at most 2×2×2 sections per lantern, and a lantern far from the
  * camera waits for a bigger move. Light passes through walls, as in other dynamic light mods; Sodium's per-vertex light skips
  * faces turned away from the lantern.
+ * Adaptive light (config adaptiveLight): the world's own light at the lantern (sky light minus the time of day and the
+ * weather, or block light from torches) sets how strong it is. Around light 12 and up (daylight, a lit room) it gives
+ * DIM of its level over DIM_REACH of its radius; below about 4 (night, caves) full level over DARK_REACH. It eases
+ * between the two over EASE seconds, so walking into a cave brightens it gradually instead of switching.
  */
 public final class DynamicLight {
     /** Radius per light level: a lantern (15) reaches 7.5 blocks. */
     static final float RADIUS_PER_LEVEL = 0.5F;
     /** A lantern that moved less than this since its light was last rebuilt waits; farther than FAR from the camera, FAR_MOVE. */
     static final double MOVE = 0.08, FAR = 24, FAR_MOVE = 0.5;
+    /** Adaptive light: level and reach in bright surroundings, reach in the dark, and the easing time in seconds. */
+    static final float DIM = 0.45F, DIM_REACH = 0.8F, DARK_REACH = 1.15F, EASE = 0.7F;
+    /** A lantern whose level drifted by more than this (adaptive light easing) has its light rebuilt. */
+    static final float LEVEL_STEP = 0.25F;
 
     /** x, y, z, level, radius per lantern: read by the chunk-building threads, replaced (never changed) each tick. */
     private static volatile float[] sources = new float[0];
@@ -38,7 +48,11 @@ public final class DynamicLight {
     public static long rebuilt, busyTicks;
     public static int mostOthers;
 
-    private record Lit(double x, double y, double z, float level) {
+    /** Per lantern: how bright its surroundings are, eased (0 dark .. 1 bright). */
+    private static final Int2FloatOpenHashMap AMBIENT = new Int2FloatOpenHashMap();
+    private static long lastAmbient;
+
+    private record Lit(double x, double y, double z, float level, float radius) {
     }
 
     private DynamicLight() {
@@ -71,6 +85,7 @@ public final class DynamicLight {
         if (lv != level) {
             level = lv;
             LIT.clear();
+            AMBIENT.clear();
             sources = new float[0];
         }
         if (lv == null) return;
@@ -78,22 +93,35 @@ public final class DynamicLight {
         LongOpenHashSet dirty = new LongOpenHashSet();
         Int2ObjectOpenHashMap<Lit> seen = new Int2ObjectOpenHashMap<>();
         Vec3 cam = mc.gameRenderer.mainCamera().position();
+        long now = System.nanoTime();
+        float dt = lastAmbient == 0 ? 1 : Math.min(1, (now - lastAmbient) / 1e9F);
+        lastAmbient = now;
         if (enabled) {
             for (Player p : lv.players()) {
                 if (p.isSpectator() || !p.isAlive()) continue;
                 ItemStack belt = BeltClient.beltOf(p);
                 if (belt.isEmpty()) continue;
-                int light = Lanterns.light(belt);
-                if (light <= 0) continue;
+                int base = Lanterns.light(belt);
+                if (base <= 0) continue;
                 Vec3 at = Swing.bobOf(p.getId());
                 if (at == null) at = estimate(p);
+                float bright = 0;
+                if (Config.get().adaptiveLight) {
+                    float target = ambient(lv, at);
+                    float was = AMBIENT.getOrDefault(p.getId(), target);
+                    bright = was + (target - was) * (1 - (float) Math.exp(-dt / EASE));
+                    if (Math.abs(bright - target) < 0.01F) bright = target;
+                }
+                AMBIENT.put(p.getId(), bright);
+                float light = base * (1 + (DIM - 1) * bright);
+                float radius = base * RADIUS_PER_LEVEL * (DARK_REACH + (DIM_REACH - DARK_REACH) * bright);
                 Lit was = LIT.get(p.getId());
                 // a lantern far from the camera shows little of its motion: it waits for a bigger move (fewer rebuilds)
                 double move = at.distanceToSqr(cam) > FAR * FAR ? FAR_MOVE : MOVE;
-                if (was == null || was.level() != light || sq(was.x() - at.x, was.y() - at.y, was.z() - at.z) > move * move) {
-                    if (was != null) sections(was.x(), was.y(), was.z(), was.level() * RADIUS_PER_LEVEL, dirty);
-                    sections(at.x, at.y, at.z, light * RADIUS_PER_LEVEL, dirty);
-                    seen.put(p.getId(), new Lit(at.x, at.y, at.z, light));
+                if (was == null || Math.abs(was.level() - light) > LEVEL_STEP || sq(was.x() - at.x, was.y() - at.y, was.z() - at.z) > move * move) {
+                    if (was != null) sections(was.x(), was.y(), was.z(), was.radius(), dirty);
+                    sections(at.x, at.y, at.z, radius, dirty);
+                    seen.put(p.getId(), new Lit(at.x, at.y, at.z, light, radius));
                 } else {
                     seen.put(p.getId(), was);
                 }
@@ -103,9 +131,10 @@ public final class DynamicLight {
         for (var e : LIT.int2ObjectEntrySet()) {
             if (!seen.containsKey(e.getIntKey())) {
                 Lit was = e.getValue();
-                sections(was.x(), was.y(), was.z(), was.level() * RADIUS_PER_LEVEL, dirty);
+                sections(was.x(), was.y(), was.z(), was.radius(), dirty);
             }
         }
+        AMBIENT.keySet().retainAll(seen.keySet());
         LIT.clear();
         LIT.putAll(seen);
         // the positions the chunk meshes are built with: the ones whose light was just marked for a rebuild
@@ -116,7 +145,7 @@ public final class DynamicLight {
             pack[i++] = (float) l.y();
             pack[i++] = (float) l.z();
             pack[i++] = l.level();
-            pack[i++] = l.level() * RADIUS_PER_LEVEL;
+            pack[i++] = l.radius();
         }
         sources = pack;
         on = pack.length > 0;
@@ -129,6 +158,23 @@ public final class DynamicLight {
                 rebuilt++;
             }
         }
+    }
+
+    /**
+     * How bright the world is around a lantern, 0 (dark) to 1 (daylight, a lit room): the world's light at its cell (sky
+     * light less the time of day and the weather, or block light), or the cell above when that one is solid. The lanterns'
+     * smooth light isn't in the world's light, so it doesn't count itself.
+     */
+    static float ambient(ClientLevel lv, Vec3 at) {
+        BlockPos pos = BlockPos.containing(at);
+        int raw = Math.max(lv.getMaxLocalRawBrightness(pos), lv.getMaxLocalRawBrightness(pos.above()));
+        float u = Math.max(0, Math.min(1, (raw - 4) / 8F));
+        return u * u * (3 - 2 * u);
+    }
+
+    /** Test hook: a lantern's eased brightness of its surroundings (0 dark .. 1 bright), or -1. */
+    public static float ambientOf(int entityId) {
+        return AMBIENT.containsKey(entityId) ? AMBIENT.get(entityId) : -1;
     }
 
     /** Where a lantern hangs on a player the swing hasn't simulated yet (not drawn this frame): the hip. */

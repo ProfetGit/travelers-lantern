@@ -238,7 +238,7 @@ public final class Director {
                 onServer(mc, "light", sp -> Lights.cellOf(sp.getUUID()) != null && Lights.smooth(sp.getUUID()) && Lights.shownTo(sp.getUUID()) == 0
                     && !sp.level().getBlockState(Lights.cellOf(sp.getUUID())).is(Blocks.LIGHT),
                     sp -> "cell " + Lights.cellOf(sp.getUUID()) + ", " + Lights.status());
-                lightChecks(mc, "client_light");
+                lightChecks(mc, "client_light", true);
             }
             case "idle" -> check("settled", restSpread < 1 && lastAngle < 15,
                 String.format(Locale.ROOT, "rod %.1f deg from straight down at rest (moves %.2f deg over the last second), max %.1f", lastAngle, restSpread, maxAngle));
@@ -250,7 +250,7 @@ public final class Director {
             case "turn" -> check("twist", maxTwist > 8 && maxTwist < 111, String.format(Locale.ROOT, "lantern lagged the turn by up to %.1f deg", maxTwist));
             case "sneak" -> check("drawn", drawn > 0, drawn + " lantern draws");
             case "light" -> {
-                lightChecks(mc, "lit");
+                lightChecks(mc, "lit", false);
                 if (present("net.caffeinemc.mods.sodium.client.model.light.smooth.SmoothLightPipeline")) {
                     long q = io.github.profetgit.travelerslantern.client.SodiumLight.quads;
                     check("sodium", q > 0, q + " quads lit through Sodium's pipeline");
@@ -288,17 +288,22 @@ public final class Director {
 
     /**
      * The belt lantern lights the player (the entity light the renderer uses) and the ground beside it (the light a
-     * chunk mesh is built with), and this client has no light block of its own there.
+     * chunk mesh is built with), and this client has no light block of its own there. Adaptive light: at noon on open
+     * ground it glows softly (about 7 of 15 at the player), at midnight it is at full strength and reaches farther.
      */
-    static void lightChecks(Minecraft mc, String name) {
+    static void lightChecks(Minecraft mc, String name, boolean day) {
         float partial = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
-        int self = mc.getEntityRenderDispatcher().getPackedLightCoords(mc.player, partial);
+        float self = (mc.getEntityRenderDispatcher().getPackedLightCoords(mc.player, partial) & 0xFFFF) / 16F;
         BlockPos ground = mc.player.blockPosition().relative(net.minecraft.core.Direction.NORTH, 2);
-        int floor = net.minecraft.util.LightCoordsUtil.getLightCoords(mc.level, ground);
+        float floor = (net.minecraft.util.LightCoordsUtil.getLightCoords(mc.level, ground) & 0xFFFF) / 16F;
         int blocks = lightBlocks(mc);
-        check(name, (self & 0xFFFF) >= 13 * 16 && (floor & 0xFFFF) >= 9 * 16 && blocks == 0,
-            String.format(Locale.ROOT, "player lit %.2f, ground 2 blocks off %.2f (sixteenths of block light), %d light blocks on this client",
-                (self & 0xFFFF) / 16F, (floor & 0xFFFF) / 16F, blocks));
+        float amb = DynamicLight.ambientOf(mc.player.getId());
+        boolean ok = day ? self >= 5 && self <= 8.5 && floor >= 3 && floor <= 8 : self >= 13 && floor >= 12;
+        check(name, ok && blocks == 0, String.format(Locale.ROOT,
+            "player lit %.2f, ground 2 blocks off %.2f (sixteenths of block light), %d light blocks on this client (%s)",
+            self, floor, blocks, day ? "noon, dimmed" : "midnight, full"));
+        check(name + "_ambient", day ? amb > 0.95 : amb >= 0 && amb < 0.05,
+            String.format(Locale.ROOT, "surroundings %.2f (0 dark .. 1 bright)", amb));
     }
 
     static int lightBlocks(Minecraft mc) {
