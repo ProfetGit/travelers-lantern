@@ -7,6 +7,16 @@
 
 **Your light, hands free.** Hang a lantern on your belt with one key. It lights your way wherever you walk, swings as you move, and leaves both hands free for your pickaxe, sword or shield. For Minecraft 26.2 and 26.3 on Fabric, NeoForge and Forge. It works on your client alone on any server, and with the mod on the server too, everyone sees each other's lanterns.
 
+<p align="center">
+<img src="https://raw.githubusercontent.com/ProfetGit/travelers-lantern/main/docs/clips/hook.gif" alt="Press B: the lantern goes from your hand to your belt" width="49%">
+<img src="https://raw.githubusercontent.com/ProfetGit/travelers-lantern/main/docs/clips/walk.gif" alt="The lantern swings as you walk and jump, and the light moves with you" width="49%">
+<img src="https://raw.githubusercontent.com/ProfetGit/travelers-lantern/main/docs/clips/cave.gif" alt="Both hands free in a dark cave, the light comes along" width="49%">
+</p>
+
+<p align="center">
+<img src="https://raw.githubusercontent.com/ProfetGit/travelers-lantern/main/docs/clips/compare.gif" alt="Vanilla vs Traveler's Lantern on the same night walk, shaders off" width="88%">
+</p>
+
 ![Features](https://raw.githubusercontent.com/ProfetGit/travelers-lantern/main/docs/desc/title-features.png)
 
 - **Hands-free light.** Press B and the lantern goes from your hand to your belt. Press B again to take it back.
