@@ -28,13 +28,6 @@ import net.minecraft.world.phys.Vec3;
  * weather, or block light from torches) sets how strong it is. Around light 12 and up (daylight, a lit room) it gives
  * DIM of its level over DIM_REACH of its radius; below about 4 (night, caves) full level over DARK_REACH. It eases
  * between the two over EASE seconds, so walking into a cave brightens it gradually instead of switching.
- * Body shadow (config bodyShadow): the wearer's body (a vertical cylinder, BODY_RADIUS, feet to head) stands between the
- * lantern and whatever is on its other side, which gets down to 1 − SHADOW of the light: a wedge seen from the lantern
- * whose half-angle is the body's (asin(r / D)), faded over SHADOW_SOFT on each side. It is aimed from the belt hook, not
- * the swinging lantern, and D never drops below SHADOW_MIN_D: from the swinging lantern, which hangs right at the body's
- * edge, the wedge swung and flipped between almost nothing and half the world, and ground corners flickered by up to 8
- * light levels a tick (0.2.6). Light is only known per block corner, so it is a soft dark wedge, not a silhouette; shader
- * packs show it too, since they read this block light (Complementary's own held light has no shadows).
  */
 public final class DynamicLight {
     /** Radius per light level: a lantern (15) reaches 7.5 blocks. */
@@ -45,15 +38,8 @@ public final class DynamicLight {
     static final float DIM = 0.45F, DIM_REACH = 0.8F, DARK_REACH = 1.15F, EASE = 0.7F;
     /** A lantern whose level drifted by more than this (adaptive light easing) has its light rebuilt. */
     static final float LEVEL_STEP = 0.25F;
-    /** Body shadow: the wearer as a cylinder of this radius, how much light it takes away, the lantern's size (penumbra). */
-    static final float BODY_RADIUS = 0.25F, SHADOW = 0.65F;
-    /** Body shadow: the soft edge (radians each side) and the closest the hook may count as to the body's axis. */
-    static final double SHADOW_SOFT = Math.toRadians(22), SHADOW_MIN_D = 0.36;
-    /**
-     * Floats per source in `sources`: x, y, z, level, radius, body x, body z, feet y, head y, body radius (0: no shadow),
-     * hook x, hook z (where the shadow is aimed from).
-     */
-    static final int STRIDE = 12;
+    /** Floats per source in `sources`: x, y, z, level, radius. */
+    static final int STRIDE = 5;
     /** Faces: light arriving at this cosine to the normal (behind the plane) gives nothing, at this one all of it. */
     static final double FACE_BEHIND = -0.35, FACE_FRONT = 0.2;
     /** Easing time (seconds) of the light's height behind the lantern's. */
@@ -74,8 +60,7 @@ public final class DynamicLight {
     private static final Int2FloatOpenHashMap HEIGHT = new Int2FloatOpenHashMap();
     private static long lastAmbient;
 
-    private record Lit(double x, double y, double z, float level, float radius, double bx, double bz, double by0, double by1, double hx,
-                       double hz) {
+    private record Lit(double x, double y, double z, float level, float radius) {
     }
 
     private DynamicLight() {
@@ -151,9 +136,7 @@ public final class DynamicLight {
                 if (was == null || Math.abs(was.level() - light) > LEVEL_STEP || sq(was.x() - at.x, was.y() - at.y, was.z() - at.z) > move * move) {
                     if (was != null) sections(was.x(), was.y(), was.z(), was.radius(), dirty);
                     sections(at.x, at.y, at.z, radius, dirty);
-                    Vec3 hook = estimate(p);
-                    seen.put(p.getId(), new Lit(at.x, at.y, at.z, light, radius, p.getX(), p.getZ(), p.getY(), p.getY() + p.getBbHeight(),
-                        hook.x, hook.z));
+                    seen.put(p.getId(), new Lit(at.x, at.y, at.z, light, radius));
                 } else {
                     seen.put(p.getId(), was);
                 }
@@ -172,7 +155,6 @@ public final class DynamicLight {
         LIT.putAll(seen);
         // the positions the chunk meshes are built with: the ones whose light was just marked for a rebuild
         float[] pack = new float[seen.size() * STRIDE];
-        float body = Config.get().bodyShadow ? BODY_RADIUS : 0;
         int i = 0;
         for (Lit l : seen.values()) {
             pack[i++] = (float) l.x();
@@ -180,13 +162,6 @@ public final class DynamicLight {
             pack[i++] = (float) l.z();
             pack[i++] = l.level();
             pack[i++] = l.radius();
-            pack[i++] = (float) l.bx();
-            pack[i++] = (float) l.bz();
-            pack[i++] = (float) l.by0();
-            pack[i++] = (float) l.by1();
-            pack[i++] = body;
-            pack[i++] = (float) l.hx();
-            pack[i++] = (float) l.hz();
         }
         sources = pack;
         on = pack.length > 0;
@@ -240,7 +215,7 @@ public final class DynamicLight {
             double dx = x - s[i], dy = y - s[i + 1], dz = z - s[i + 2];
             double d2 = dx * dx + dy * dy + dz * dz, r2 = s[i + 4] * s[i + 4];
             if (d2 >= r2) continue;
-            best = Math.max(best, (float) (s[i + 3] * (1 - d2 / r2)) * shade(s, i, x, y, z));
+            best = Math.max(best, (float) (s[i + 3] * (1 - d2 / r2)));
         }
         return best;
     }
@@ -261,40 +236,9 @@ public final class DynamicLight {
             double cos = -(dx * nx + dy * ny + dz * nz) / Math.sqrt(Math.max(d2, 1e-4));
             double front = smooth((cos - FACE_BEHIND) / (FACE_FRONT - FACE_BEHIND));
             if (front <= 0) continue;
-            best = Math.max(best, (float) (s[i + 3] * (1 - d2 / r2) * front) * shade(s, i, x, y, z));
+            best = Math.max(best, (float) (s[i + 3] * (1 - d2 / r2) * front));
         }
         return best;
-    }
-
-    /**
-     * How much of source i's light reaches a point past its wearer's body: 1, or down to 1 − SHADOW inside the wedge the
-     * body covers seen from the belt hook, with soft edges (see the class comment). Points in the body (the wearer's own
-     * light probe), beside it or in front of it (closer to the hook than half the body's distance along it) are never shaded.
-     */
-    static float shade(float[] s, int i, double x, double y, double z) {
-        float br = s[i + 9];
-        if (br <= 0) return 1;
-        double hx = s[i + 10], hz = s[i + 11], bx = s[i + 5], bz = s[i + 6];
-        double vx = bx - hx, vz = bz - hz, dist = Math.sqrt(vx * vx + vz * vz);
-        if (dist < 1e-4) return 1;
-        vx /= dist;
-        vz /= dist;
-        double d = Math.max(dist, SHADOW_MIN_D);
-        double px = x - bx, pz = z - bz;
-        if (px * px + pz * pz < (br + 0.1) * (br + 0.1)) return 1;
-        double ux = x - hx, uz = z - hz, len = Math.sqrt(ux * ux + uz * uz);
-        if (len < 1e-4) return 1;
-        double proj = ux * vx + uz * vz;
-        if (proj <= 0) return 1;
-        double beyond = smooth((proj - 0.5 * d) / (0.8 * d));
-        if (beyond <= 0) return 1;
-        double beta = Math.acos(Math.min(1, proj / len)), alpha = Math.asin(Math.min(1, br / d));
-        double across = smooth((alpha + SHADOW_SOFT - beta) / (2 * SHADOW_SOFT));
-        if (across <= 0) return 1;
-        // height where the line from the lantern passes the body's axis: between the feet and the head
-        double sy = s[i + 1], yy = sy + (d / proj) * (y - sy);
-        double along = smooth((yy - s[i + 7] + 0.3) / 0.6) * smooth((s[i + 8] + 0.3 - yy) / 0.6);
-        return (float) (1 - SHADOW * across * beyond * along);
     }
 
     private static double smooth(double u) {

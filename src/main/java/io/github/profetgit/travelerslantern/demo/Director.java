@@ -388,13 +388,6 @@ public final class Director {
             self, floor, blocks, day ? "noon, dimmed" : "midnight, full"));
         check(name + "_ambient", day ? amb > 0.95 : amb >= 0 && amb < 0.05,
             String.format(Locale.ROOT, "surroundings %.2f (0 dark .. 1 bright)", amb));
-        if (!day) {
-            // body shadow: the ground on the far side (south; the lantern hangs on the left, the player faces east) is darker
-            BlockPos away = mc.player.blockPosition().relative(net.minecraft.core.Direction.SOUTH, 2);
-            float far = (net.minecraft.util.LightCoordsUtil.getLightCoords(mc.level, away) & 0xFFFF) / 16F;
-            check(name + "_shadow", far <= floor * 0.6F && far >= 2, String.format(Locale.ROOT,
-                "ground 2 blocks off: %.2f on the lantern's side, %.2f behind the body", floor, far));
-        }
     }
 
     static int lightBlocks(Minecraft mc) {
