@@ -29,6 +29,11 @@ public final class Config {
      * bright, a shorter reach); at night, underground and in the dark it is at full strength and reaches a bit farther.
      */
     public boolean adaptiveLight = true;
+    /**
+     * Client: the wearer's body casts a soft shadow in the lantern's light, on the side away from the lantern (works with
+     * shader packs too).
+     */
+    public boolean bodyShadow = true;
     /** Client, on servers without the mod: the belt is on (it shows a lantern from your inventory). */
     public boolean clientBelt = false;
     /** Client: the lantern hangs on the left hip (false: the right one). */
@@ -59,6 +64,8 @@ public final class Config {
         // dev runs (ModTest) pick the light model without touching the player's config
         String smooth = System.getProperty("travelers_lantern.demo.smooth", "");
         if (!smooth.isEmpty()) current.smoothLight = Boolean.parseBoolean(smooth);
+        String shadow = System.getProperty("travelers_lantern.demo.shadow", "");
+        if (!shadow.isEmpty()) current.bodyShadow = Boolean.parseBoolean(shadow);
         String rate = System.getProperty("travelers_lantern.demo.rate", "");
         if (!rate.isEmpty()) current.lightUpdatesPerSecond = Integer.parseInt(rate);
         current.lightUpdatesPerSecond = Math.max(20, Math.min(60, current.lightUpdatesPerSecond));
