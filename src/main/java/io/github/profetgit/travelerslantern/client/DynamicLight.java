@@ -47,6 +47,10 @@ public final class DynamicLight {
     static final float BODY_RADIUS = 0.25F, SHADOW = 0.7F, LAMP_SIZE = 0.35F;
     /** Floats per source in `sources`: x, y, z, level, radius, body x, body z, feet y, head y, body radius (0: no shadow). */
     static final int STRIDE = 10;
+    /** Faces: light arriving at this cosine to the normal (behind the plane) gives nothing, at this one all of it. */
+    static final double FACE_BEHIND = -0.35, FACE_FRONT = 0.2;
+    /** Easing time (seconds) of the light's height behind the lantern's. */
+    static final float LIFT = 0.15F;
 
     /** STRIDE floats per lantern (see STRIDE): read by the chunk-building threads, replaced (never changed) each tick. */
     private static volatile float[] sources = new float[0];
@@ -59,6 +63,8 @@ public final class DynamicLight {
 
     /** Per lantern: how bright its surroundings are, eased (0 dark .. 1 bright). */
     private static final Int2FloatOpenHashMap AMBIENT = new Int2FloatOpenHashMap();
+    /** Per lantern: the eased height of its light (see LIFT). */
+    private static final Int2FloatOpenHashMap HEIGHT = new Int2FloatOpenHashMap();
     private static long lastAmbient;
 
     private record Lit(double x, double y, double z, float level, float radius, double bx, double bz, double by0, double by1) {
@@ -95,6 +101,7 @@ public final class DynamicLight {
             level = lv;
             LIT.clear();
             AMBIENT.clear();
+            HEIGHT.clear();
             sources = new float[0];
         }
         if (lv == null) return;
@@ -114,6 +121,12 @@ public final class DynamicLight {
                 if (base <= 0) continue;
                 Vec3 at = Swing.bobOf(p.getId());
                 if (at == null) at = estimate(p);
+                // the light's height trails the lantern a little (LIFT seconds), so a jump or a step up eases the light
+                // over the new ground instead of snapping it; a teleport-sized move snaps
+                float hy = HEIGHT.getOrDefault(p.getId(), (float) at.y);
+                hy = Math.abs(at.y - hy) > 2 ? (float) at.y : hy + (float) (at.y - hy) * (1 - (float) Math.exp(-dt / LIFT));
+                HEIGHT.put(p.getId(), hy);
+                at = new Vec3(at.x, hy, at.z);
                 float bright = 0;
                 if (Config.get().adaptiveLight) {
                     float target = ambient(lv, at);
@@ -144,6 +157,7 @@ public final class DynamicLight {
             }
         }
         AMBIENT.keySet().retainAll(seen.keySet());
+        HEIGHT.keySet().retainAll(seen.keySet());
         LIT.clear();
         LIT.putAll(seen);
         // the positions the chunk meshes are built with: the ones whose light was just marked for a rebuild
@@ -219,7 +233,12 @@ public final class DynamicLight {
         return best;
     }
 
-    /** Like at(), counting only lanterns in front of a face (normal nx, ny, nz), so a wall's far side stays dark. */
+    /**
+     * Like at(), for a face (normal nx, ny, nz): a lantern behind the face's plane doesn't light it, so a wall's far side
+     * stays dark. The cut is a fade over the angle the light arrives at (its cosine to the normal, FACE_BEHIND to
+     * FACE_FRONT), not a switch: with a hard cut the whole top of a ledge lit up in one frame when the lantern rose past it
+     * (jumping up a step). By the angle, light sweeps across a surface as the lantern rises, near spots first.
+     */
     public static float atFace(double x, double y, double z, float nx, float ny, float nz) {
         float[] s = sources;
         float best = 0;
@@ -227,9 +246,10 @@ public final class DynamicLight {
             double dx = x - s[i], dy = y - s[i + 1], dz = z - s[i + 2];
             double d2 = dx * dx + dy * dy + dz * dz, r2 = s[i + 4] * s[i + 4];
             if (d2 >= r2) continue;
-            // the face points away from the lantern: the lantern is behind its plane (a little slack for faces it touches)
-            if (dx * nx + dy * ny + dz * nz > 0.3) continue;
-            best = Math.max(best, (float) (s[i + 3] * (1 - d2 / r2)) * shade(s, i, x, y, z));
+            double cos = -(dx * nx + dy * ny + dz * nz) / Math.sqrt(Math.max(d2, 1e-4));
+            double front = smooth((cos - FACE_BEHIND) / (FACE_FRONT - FACE_BEHIND));
+            if (front <= 0) continue;
+            best = Math.max(best, (float) (s[i + 3] * (1 - d2 / r2) * front) * shade(s, i, x, y, z));
         }
         return best;
     }

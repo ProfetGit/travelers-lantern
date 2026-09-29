@@ -60,6 +60,7 @@ public final class Director {
         return t;
     });
     static final int G = -10;
+    static final java.util.List<Float> stepLight = new java.util.ArrayList<>();
     static int tick = -1, scene = -1, sceneTick, frame;
     static boolean recording, done, stopped, hudHidden;
     static final AtomicInteger pending = new AtomicInteger();
@@ -137,6 +138,7 @@ public final class Director {
             case "idle", "turn", "sneak", "fp" -> 90;
             case "walk", "light" -> 110;
             case "sprint", "jump" -> 120;
+            case "step" -> 70;
             case "death", "keep" -> 90;
             default -> 60;
         };
@@ -145,7 +147,12 @@ public final class Director {
     static void startScene(Minecraft mc, String s) {
         String p = name(mc);
         // every scene starts from the same spot, facing east, standing still
-        cmd(mc, "tp " + p + " 0.5 " + (G + 1) + " 0.5 -90 0", "time set " + ("light".equals(s) ? 18000 : 6000));
+        cmd(mc, "tp " + p + " 0.5 " + (G + 1) + " 0.5 -90 0", "time set " + ("light".equals(s) || "step".equals(s) ? 18000 : 6000));
+        // a 1-block ledge ahead to jump onto (removed again when the scene ends)
+        if ("step".equals(s)) {
+            cmd(mc, "fill 3 " + (G + 1) + " -4 9 " + (G + 1) + " 4 minecraft:stone");
+            stepLight.clear();
+        }
         mc.player.setYRot(-90);
         mc.player.setYHeadRot(-90);
         mc.player.yBodyRot = -90;
@@ -168,6 +175,15 @@ public final class Director {
                 if (t == 0) busyAtStart = DynamicLight.busyTicks;
                 // the lantern still settles for a moment after the stop; count from when it hangs still
                 if (t == 95) busyAtWalkEnd = DynamicLight.busyTicks;
+            }
+            case "step" -> {
+                hold(o.keyUp, t < 32);
+                hold(o.keyJump, t >= 8 && t < 12);
+                // the lantern's light on the ledge's top face (Sodium's per-face path), where the player climbs on:
+                // the mean over the corners of a 5x5 patch, so a sweep across the surface counts as smooth
+                float sum = 0;
+                for (int x = 3; x <= 7; x++) for (int z = -2; z <= 2; z++) sum += DynamicLight.atFace(x, G + 2, z, 0, 1, 0);
+                stepLight.add(sum / 25);
             }
             case "sprint" -> {
                 hold(o.keyUp, t < 60);
@@ -246,6 +262,16 @@ public final class Director {
                 check("swings", walkAngle > 4, String.format(Locale.ROOT, "rod up to %.1f deg while moving, %.1f max overall", walkAngle, maxAngle));
                 check("finite", Double.isFinite(maxAngle) && maxAngle < 120, String.format(Locale.ROOT, "max %.1f deg", maxAngle));
                 check("drawn", drawn > 0, drawn + " lantern draws");
+            }
+            case "step" -> {
+                float jump = 0;
+                for (int i = 1; i < stepLight.size(); i++) jump = Math.max(jump, Math.abs(stepLight.get(i) - stepLight.get(i - 1)));
+                boolean onTop = mc.player.getY() >= G + 1.9;
+                StringBuilder seq = new StringBuilder();
+                for (int i = 0; i < Math.min(40, stepLight.size()); i++) seq.append(String.format(Locale.ROOT, "%.1f ", stepLight.get(i)));
+                check("smooth_step", onTop && jump <= 4.5, String.format(Locale.ROOT,
+                    "on the ledge %b, biggest change of the ledge top's light in one tick %.2f; per tick: %s", onTop, jump, seq.toString().trim()));
+                cmd(mc, "fill 3 " + (G + 1) + " -4 9 " + (G + 1) + " 4 minecraft:air");
             }
             case "turn" -> check("twist", maxTwist > 8 && maxTwist < 111, String.format(Locale.ROOT, "lantern lagged the turn by up to %.1f deg", maxTwist));
             case "sneak" -> check("drawn", drawn > 0, drawn + " lantern draws");
