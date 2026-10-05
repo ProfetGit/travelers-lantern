@@ -1,12 +1,12 @@
 -- Traveler's Lantern icon sprites (pack-icon-animation skill). Run through the aseprite MCP:
---   dofile("/home/emppu/Projects/Minecraft Datapacks/BeltLantern/dev/icon/draw_sprites.lua")
+--   dofile("/home/emppu/Projects/Minecraft Datapacks/mods/BeltLantern/dev/icon/draw_sprites.lua")
 -- The copper golem's textures are copied from Profile-Avatar/dev/icon/sprites (same author, the channel mascot).
 -- New here: the lantern (iron frame, flame), the belt and hook, the light keys, backgrounds and the lettering.
 -- Face textures sit in the top-left of a 16x16 canvas (Blockbench treats taller-than-wide images as animated strips).
 -- Light and shadow are drawn in key colours; make_icon.py maps them to their real colours under the outline:
 --   #FF00FF golem shadow, #00FFFF/#00FFC0/#00FF80 ground light pool (outer..inner).
 dofile("/home/emppu/Projects/Minecraft Datapacks/.claude/skills/pack-icon-animation/assets/pixel_art.lua")
-local OUT = "/home/emppu/Projects/Minecraft Datapacks/BeltLantern/dev/icon/sprites/"
+local OUT = "/home/emppu/Projects/Minecraft Datapacks/mods/BeltLantern/dev/icon/sprites/"
 
 local C = {
   -- iron, cool blue-grey ramp

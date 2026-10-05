@@ -1,5 +1,6 @@
 package io.github.profetgit.travelerslantern.mixin.client;
 
+//? if >=1.21.2 {
 import io.github.profetgit.travelerslantern.client.BeltState;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 import net.minecraft.world.level.block.state.BlockState;
@@ -29,3 +30,12 @@ public abstract class AvatarRenderStateMixin implements BeltState {
         return travelerslantern$root;
     }
 }
+//?} else {
+/*import net.minecraft.client.Minecraft;
+import org.spongepowered.asm.mixin.Mixin;
+
+// Render states arrived in 1.21.2: nothing to add here, kept so the mixin list is the same for every version.
+@Mixin(Minecraft.class)
+public abstract class AvatarRenderStateMixin {
+}
+*///?}

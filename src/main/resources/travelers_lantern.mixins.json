@@ -7,6 +7,7 @@
     "common.CommandsMixin",
     "common.InventoryMixin",
     "common.MinecraftServerMixin",
+    "common.PlayerBeltMixin",
     "common.PlayerListMixin"
   ],
   "client": [
@@ -23,6 +24,7 @@
     "client.LivingEntityRendererMixin",
     "client.MinecraftMixin",
     "client.OptionsMixin",
+    "client.compat.IndigoLightMixin",
     "client.compat.IrisHeldItemMixin",
     "client.compat.SodiumFlatFluidLightPipelineMixin",
     "client.compat.SodiumFlatLightPipelineMixin",

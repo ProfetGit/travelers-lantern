@@ -1,5 +1,6 @@
 package io.github.profetgit.travelerslantern.mixin.client;
 
+//? if >=1.21.2 {
 import io.github.profetgit.travelerslantern.Lanterns;
 import io.github.profetgit.travelerslantern.client.BeltClient;
 import io.github.profetgit.travelerslantern.client.BeltLayer;
@@ -31,3 +32,24 @@ public abstract class AvatarRendererMixin {
         ((BeltState) state).travelerslantern$setLantern(belt.isEmpty() ? null : Lanterns.hanging(belt));
     }
 }
+//?} else {
+/*import io.github.profetgit.travelerslantern.client.BeltLayer;
+import net.minecraft.client.model.PlayerModel;
+import net.minecraft.client.player.AbstractClientPlayer;
+import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.entity.player.PlayerRenderer;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+@Mixin(PlayerRenderer.class)
+public abstract class AvatarRendererMixin {
+    @Inject(method = "<init>", at = @At("TAIL"))
+    @SuppressWarnings("unchecked")
+    private void travelerslantern$layer(EntityRendererProvider.Context context, boolean slim, CallbackInfo ci) {
+        PlayerRenderer self = (PlayerRenderer) (Object) this;
+        ((LivingEntityRendererAccessor<AbstractClientPlayer, PlayerModel<AbstractClientPlayer>>) self).travelerslantern$addLayer(new BeltLayer(self));
+    }
+}
+*///?}

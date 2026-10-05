@@ -1,5 +1,6 @@
 package io.github.profetgit.travelerslantern.compat;
 
+//? if >=1.21.2 {
 import net.minecraft.client.model.Model;
 
 /**
@@ -15,3 +16,13 @@ public final class Emf {
         return model.root().getClass().getName().startsWith("traben.entity_model_features");
     }
 }
+//?} else {
+/*public final class Emf {
+    private Emf() {
+    }
+
+    public static boolean animated(Object model) {
+        return false;
+    }
+}
+*///?}

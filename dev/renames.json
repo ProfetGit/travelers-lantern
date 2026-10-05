@@ -1,0 +1,229 @@
+[
+  {
+    "regex": "net\\.minecraft\\.client\\.renderer\\.state\\.level\\.",
+    "to": "net.minecraft.client.renderer.state.",
+    "when": "<26.2"
+  },
+  {
+    "regex": "net\\.minecraft\\.util\\.LightCoordsUtil\\.getLightCoords\\(",
+    "to": "net.minecraft.client.renderer.LevelRenderer.getLightColor(",
+    "when": "<26.2"
+  },
+  {
+    "regex": "import net\\.minecraft\\.util\\.LightCoordsUtil;",
+    "to": "import net.minecraft.client.renderer.LightTexture;",
+    "when": "<26.2"
+  },
+  {
+    "from": "LightCoordsUtil",
+    "to": "LightTexture",
+    "when": "<26.2",
+    "files": "^(BeltLayer|GhostLight|DynamicLight|Director|MpDirector)\\.java$"
+  },
+  {
+    "regex": "\\.levelExtractor\\b",
+    "to": ".levelRenderer",
+    "when": "<26.2"
+  },
+  {
+    "regex": "net/minecraft/client/renderer/state/level/",
+    "to": "net/minecraft/client/renderer/state/",
+    "when": "<26.2"
+  },
+  {
+    "from": "alignWithEntity",
+    "to": "setup",
+    "when": "<26.2",
+    "files": "^CameraMixin\\.java$"
+  },
+  {
+    "regex": "travelerslantern\\$demoCam\\(float partial, CallbackInfo ci\\)",
+    "to": "travelerslantern$demoCam(net.minecraft.world.level.Level level, Entity target, boolean detached, boolean mirrored, float partial, CallbackInfo ci)",
+    "when": "<26.2",
+    "files": "^CameraMixin\\.java$"
+  },
+  {
+    "regex": "AvatarRenderer<\\?>",
+    "to": "PlayerRenderer",
+    "when": "<1.21.9"
+  },
+  {
+    "from": "AvatarRenderer",
+    "to": "PlayerRenderer",
+    "when": "<1.21.9"
+  },
+  {
+    "from": "AvatarRenderState",
+    "to": "PlayerRenderState",
+    "when": "<1.21.9"
+  },
+  {
+    "regex": "net\\.minecraft\\.world\\.entity\\.Avatar\\b",
+    "to": "net.minecraft.client.player.AbstractClientPlayer",
+    "when": "<1.21.9"
+  },
+  {
+    "regex": "Lnet/minecraft/world/entity/Avatar;",
+    "to": "Lnet/minecraft/client/player/AbstractClientPlayer;",
+    "when": "<1.21.9"
+  },
+  {
+    "regex": "\\(Avatar entity,",
+    "to": "(net.minecraft.client.player.AbstractClientPlayer entity,",
+    "when": "<1.21.9"
+  },
+  {
+    "regex": "net\\.minecraft\\.client\\.model\\.player\\.PlayerModel",
+    "to": "net.minecraft.client.model.PlayerModel",
+    "when": "<1.21.9"
+  },
+  {
+    "regex": "net\\.minecraft\\.client\\.renderer\\.entity\\.player\\.PlayerRenderer",
+    "to": "net.minecraft.client.renderer.entity.player.PlayerRenderer",
+    "when": "<1.21.9"
+  },
+  {
+    "regex": "submit\\(PoseStack ps, SubmitNodeCollector c, int light,",
+    "to": "render(PoseStack ps, MultiBufferSource c, int light,",
+    "when": "<1.21.9",
+    "files": "^BeltLayer\\.java$"
+  },
+  {
+    "regex": "import net\\.minecraft\\.client\\.renderer\\.SubmitNodeCollector;",
+    "to": "import net.minecraft.client.renderer.MultiBufferSource;",
+    "when": "<1.21.9",
+    "files": "^BeltLayer\\.java$"
+  },
+  {
+    "regex": "Model<\\?>",
+    "to": "Model",
+    "when": "<1.21.9",
+    "files": "^Emf\\.java$"
+  },
+  {
+    "regex": "getGameProfile\\(\\)\\.name\\(\\)",
+    "to": "getGameProfile().getName()",
+    "when": "<1.21.9"
+  },
+  {
+    "regex": "st\\.outlineColor",
+    "to": "0",
+    "when": "<1.21.9",
+    "files": "^BeltLayer\\.java$"
+  },
+  {
+    "regex": "travelerslantern\\$demoCam\\(net\\.minecraft\\.world\\.level\\.Level level",
+    "to": "travelerslantern$demoCam(net.minecraft.world.level.BlockGetter level",
+    "when": "<1.21.11",
+    "files": "^CameraMixin\\.java$"
+  },
+  {
+    "regex": "gamerule advance_time",
+    "to": "gamerule doDaylightCycle",
+    "when": "<1.21.11",
+    "files": "^(Director|MpDirector)\\.java$"
+  },
+  {
+    "regex": "gamerule advance_weather",
+    "to": "gamerule doWeatherCycle",
+    "when": "<1.21.11",
+    "files": "^(Director|MpDirector)\\.java$"
+  },
+  {
+    "regex": "gamerule spawn_mobs",
+    "to": "gamerule doMobSpawning",
+    "when": "<1.21.11",
+    "files": "^(Director|MpDirector)\\.java$"
+  },
+  {
+    "regex": "\"gamerule spawn_monsters false\", ",
+    "to": "",
+    "when": "<1.21.11",
+    "files": "^(Director|MpDirector)\\.java$"
+  },
+  {
+    "regex": "gamerule send_command_feedback",
+    "to": "gamerule sendCommandFeedback",
+    "when": "<1.21.11",
+    "files": "^(Director|MpDirector)\\.java$"
+  },
+  {
+    "regex": "gamerule immediate_respawn",
+    "to": "gamerule doImmediateRespawn",
+    "when": "<1.21.11",
+    "files": "^(Director|MpDirector)\\.java$"
+  },
+  {
+    "regex": "gamerule keep_inventory",
+    "to": "gamerule keepInventory",
+    "when": "<1.21.11",
+    "files": "^(Director|MpDirector)\\.java$"
+  },
+  {
+    "regex": "getLightColor\\(Lnet/minecraft/client/renderer/LevelRenderer\\$BrightnessGetter;Lnet/minecraft/world/level/BlockAndTintGetter;",
+    "to": "getLightColor(Lnet/minecraft/world/level/BlockAndTintGetter;",
+    "when": "<1.21.6"
+  },
+  {
+    "regex": "LevelRenderer\\.BrightnessGetter getter, ",
+    "to": "",
+    "when": "<1.21.6"
+  },
+  {
+    "from": "RenderSectionRegion",
+    "to": "RenderChunkRegion",
+    "when": "<1.21.5"
+  },
+  {
+    "regex": "\\.getNonEquipmentItems\\(\\)",
+    "to": ".items",
+    "when": "<1.21.5"
+  },
+  {
+    "regex": "\\.getSelectedSlot\\(\\)",
+    "to": ".selected",
+    "when": "<1.21.5"
+  },
+  {
+    "regex": "\\.setSelectedSlot\\(([^()]*)\\)",
+    "to": ".selected = $1",
+    "when": "<1.21.5",
+    "groups": "1"
+  },
+  {
+    "regex": "\\.getSelectedItem\\(\\)",
+    "to": ".getSelected()",
+    "when": "<1.21.5"
+  },
+  {
+    "regex": "getMainCamera\\(\\)\\.position\\(\\)",
+    "to": "getMainCamera().getPosition()",
+    "when": "<1.21.5"
+  },
+  {
+    "regex": "Commands\\.hasPermission\\(Commands\\.LEVEL_GAMEMASTERS\\)",
+    "to": "source -> source.hasPermission(2)",
+    "when": "<1.21.5"
+  },
+  {
+    "regex": "ServerLevel level = (\\w+)\\.level\\(\\);",
+    "to": "ServerLevel level = $1.serverLevel();",
+    "when": "<1.21.5",
+    "groups": "1"
+  },
+  {
+    "regex": "new Sent\\(p, p\\.level\\(\\), s\\)",
+    "to": "new Sent(p, p.serverLevel(), s)",
+    "when": "<1.21.5"
+  },
+  {
+    "regex": "\\.getDeltaTracker\\(\\)",
+    "to": ".getTimer()",
+    "when": "<1.21.2"
+  },
+  {
+    "regex": "Inventory\\.SELECTION_SIZE",
+    "to": "9",
+    "when": "<1.21.2"
+  }
+]

@@ -58,7 +58,12 @@ public final class DynamicLight {
     private static final Int2FloatOpenHashMap AMBIENT = new Int2FloatOpenHashMap();
     /** Per lantern: the eased height of its light (see LIFT). */
     private static final Int2FloatOpenHashMap HEIGHT = new Int2FloatOpenHashMap();
-    private static long lastAmbient;
+    /**
+     * Seconds of Minecraft's frame clock (its real-time delta, summed per frame). The easing and the update rate run on
+     * it, not on the wall clock, so a recorder that steps the game one frame at a time sees them at real speed.
+     */
+    private static double clock;
+    private static double lastAmbient = Double.NaN;
 
     private record Lit(double x, double y, double z, float level, float radius) {
     }
@@ -70,7 +75,7 @@ public final class DynamicLight {
         return Config.get().clientLight && Config.get().smoothLight;
     }
 
-    private static long lastUpdate;
+    private static double lastUpdate;
 
     /** Client tick: at 20 updates a second (the light's rate setting), follow the lanterns. */
     public static void tick(Minecraft mc) {
@@ -79,11 +84,11 @@ public final class DynamicLight {
 
     /** Every frame: at a higher rate setting, follow the lanterns up to that many times a second. */
     public static void frame(Minecraft mc) {
+        clock += Math.min(0.25, io.github.profetgit.travelerslantern.Compat.delta(mc).getRealtimeDeltaTicks() / 20.0);
         int rate = Config.get().lightUpdatesPerSecond;
         if (rate <= 20) return;
-        long now = System.nanoTime();
-        if (now - lastUpdate < 1_000_000_000L / rate - 500_000L) return;
-        lastUpdate = now;
+        if (clock - lastUpdate < 1.0 / rate - 0.0005) return;
+        lastUpdate = clock;
         update(mc);
     }
 
@@ -102,9 +107,8 @@ public final class DynamicLight {
         LongOpenHashSet dirty = new LongOpenHashSet();
         Int2ObjectOpenHashMap<Lit> seen = new Int2ObjectOpenHashMap<>();
         Vec3 cam = mc.gameRenderer.mainCamera().position();
-        long now = System.nanoTime();
-        float dt = lastAmbient == 0 ? 1 : Math.min(1, (now - lastAmbient) / 1e9F);
-        lastAmbient = now;
+        float dt = Double.isNaN(lastAmbient) ? 1 : (float) Math.min(1, clock - lastAmbient);
+        lastAmbient = clock;
         if (enabled) {
             for (Player p : lv.players()) {
                 if (p.isSpectator() || !p.isAlive()) continue;
@@ -182,6 +186,9 @@ public final class DynamicLight {
      * smooth light isn't in the world's light, so it doesn't count itself.
      */
     static float ambient(ClientLevel lv, Vec3 at) {
+        //? if <1.21.2 {
+        /*lv.updateSkyBrightness();
+        *///?}
         BlockPos pos = BlockPos.containing(at);
         int raw = Math.max(lv.getMaxLocalRawBrightness(pos), lv.getMaxLocalRawBrightness(pos.above()));
         float u = Math.max(0, Math.min(1, (raw - 4) / 8F));

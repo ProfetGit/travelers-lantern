@@ -14,7 +14,7 @@
 // Animated rotations land on mesh.rotation as they are (order ZYX), no negation. Every channel is sampled once per frame.
 var TL = (function () {
   const fs = require('fs');
-  const DIR = '/home/emppu/Projects/Minecraft Datapacks/BeltLantern/dev/icon/';
+  const DIR = '/home/emppu/Projects/Minecraft Datapacks/mods/BeltLantern/dev/icon/';
   const TEX = DIR + 'sprites/';
   const PROJECT = { uuid: '1df832cb-4f04-e464-bdd3-cc43e596a79f', name: 'travelers_lantern_icon' };
   const LOCK_OWNER = 'travelers-lantern-icon';

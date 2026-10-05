@@ -1,5 +1,6 @@
 package io.github.profetgit.travelerslantern.client;
 
+//? if >=1.21.2 {
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import io.github.profetgit.travelerslantern.Config;
@@ -80,3 +81,80 @@ public final class BeltLayer extends RenderLayer<AvatarRenderState, PlayerModel>
         return new Swing.Box(new Matrix4f(p.last().pose()), cx / 16, cy / 16, cz / 16, hx / 16, hy / 16, hz / 16, out);
     }
 }
+//?} else {
+/*import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
+import io.github.profetgit.travelerslantern.Config;
+import io.github.profetgit.travelerslantern.Lanterns;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.model.PlayerModel;
+import net.minecraft.client.model.geom.ModelPart;
+import net.minecraft.client.player.AbstractClientPlayer;
+import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.entity.RenderLayerParent;
+import net.minecraft.client.renderer.entity.layers.RenderLayer;
+import net.minecraft.util.Mth;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.state.BlockState;
+import org.joml.Matrix4f;
+import org.joml.Quaternionf;
+
+// Draws the belt lantern on players, hanging at the side of the hip (1.21.1: no render states, the entity is passed to
+// the layer and the root pose is kept by LivingEntityRendererMixin).
+public final class BeltLayer extends RenderLayer<AbstractClientPlayer, PlayerModel<AbstractClientPlayer>> {
+    static final float SCALE = 0.42F;
+    static final float HOOK_X = 4.5F, HOOK_Y = 12.4F, HOOK_Z = -0.3F;
+    static final float LENGTH = 11.5F / 16 * SCALE;
+    static final float RADIUS = 3F / 16 * SCALE;
+
+    public static int drawnLocal, drawnOthers;
+
+    // The pose the entity's render started from, set at LivingEntityRenderer.render HEAD.
+    public static final Matrix4f ROOT = new Matrix4f();
+
+    public BeltLayer(RenderLayerParent<AbstractClientPlayer, PlayerModel<AbstractClientPlayer>> parent) {
+        super(parent);
+    }
+
+    @Override
+    public void render(PoseStack ps, MultiBufferSource c, int light, AbstractClientPlayer p, float limbSwing,
+                       float limbSwingAmount, float partial, float age, float yaw, float pitch) {
+        ItemStack belt = BeltClient.beltOf(p);
+        if (belt.isEmpty() || p.isSpectator()) return;
+        BlockState lantern = Lanterns.hanging(belt);
+        PlayerModel<AbstractClientPlayer> m = getParentModel();
+        boolean left = Config.get().leftSide;
+        float side = left ? 1 : -1;
+
+        Matrix4f toWorld = new Matrix4f(ROOT).invert().mul(ps.last().pose());
+        ps.pushPose();
+        m.body.translateAndRotate(ps);
+        ps.translate(side * HOOK_X / 16, HOOK_Y / 16, HOOK_Z / 16);
+        Matrix4f hook = new Matrix4f(ROOT).invert().mul(ps.last().pose());
+
+        Swing.Box[] boxes = {
+            box(m.body, 0, 6, 0, 4, 6, 2, 0),
+            box(left ? m.leftLeg : m.rightLeg, 0, 6, 0, 2, 6, 2, left ? 1 : -1)
+        };
+        double x = Mth.lerp(partial, p.xOld, p.getX()), y = Mth.lerp(partial, p.yOld, p.getY()), z = Mth.lerp(partial, p.zOld, p.getZ());
+        Quaternionf q = Swing.orient(p.getId(), BeltClient.worldPass(), age, Mth.rotLerp(partial, p.yBodyRotO, p.yBodyRot), x, y, z,
+            hook, toWorld, boxes, LENGTH * p.getScale(), RADIUS, limbSwing, limbSwingAmount, 1F, side);
+        ps.rotateAround(q, 0, 0, 0);
+        ps.rotateAround(Axis.XP.rotationDegrees(180), 0, 0, 0);
+        ps.scale(SCALE, SCALE, SCALE);
+        ps.translate(-0.5F, -1.0F, -0.5F);
+        int lit = LightTexture.pack(Math.max(LightTexture.block(light), lantern.getLightEmission()), LightTexture.sky(light));
+        LanternModels.submit(lantern, ps, c, lit, 0);
+        if (Minecraft.getInstance().player != null && p.getId() == Minecraft.getInstance().player.getId()) drawnLocal++;
+        else drawnOthers++;
+        ps.popPose();
+    }
+
+    private static Swing.Box box(ModelPart part, float cx, float cy, float cz, float hx, float hy, float hz, int out) {
+        PoseStack p = new PoseStack();
+        part.translateAndRotate(p);
+        return new Swing.Box(new Matrix4f(p.last().pose()), cx / 16, cy / 16, cz / 16, hx / 16, hy / 16, hz / 16, out);
+    }
+}
+*///?}

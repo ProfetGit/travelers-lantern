@@ -27,13 +27,13 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
-WS = ROOT.parent
-sys.path.insert(0, str(WS / "ModTest"))
-sys.path.insert(0, str(WS / "ModJar"))
+WS = ROOT.parents[1]
+sys.path.insert(0, str(WS / "tools/ModTest"))
+sys.path.insert(0, str(WS / "tools/ModJar"))
 import client  # noqa: E402
 import slots  # noqa: E402
 
-_spec = importlib.util.spec_from_file_location("modjar_smoke", WS / "ModJar" / "smoke.py")
+_spec = importlib.util.spec_from_file_location("modjar_smoke", WS / "tools/ModJar" / "smoke.py")
 ms = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(ms)
 
@@ -53,7 +53,7 @@ def jar(mc: str, loader: str) -> Path:
 def vanilla_cmd(mc: str, work: Path) -> list[str]:
     meta = client.META
     vdir = sorted(meta.glob(f"versions/{mc}-*"))[-1]
-    cp = subprocess.check_output(["python3", str(WS / "ClientCapture/classpath.py"), str(vdir / f"{vdir.name}.json"), str(meta / "libraries")], text=True).strip()
+    cp = subprocess.check_output(["python3", str(WS / "tools/ClientCapture/classpath.py"), str(vdir / f"{vdir.name}.json"), str(meta / "libraries")], text=True).strip()
     return [ms.java(), "-Xmx2G", f"-Djava.io.tmpdir={work / 'tmp'}", "-cp", cp + ":" + str(vdir / f"{vdir.name}.jar"), "net.minecraft.server.Main", "--nogui"]
 
 

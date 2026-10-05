@@ -1,5 +1,6 @@
 package io.github.profetgit.travelerslantern.client;
 
+//? if >=26.2 {
 import com.mojang.blaze3d.vertex.PoseStack;
 import java.util.IdentityHashMap;
 import java.util.Map;
@@ -41,3 +42,37 @@ public final class LanternModels {
         rs.submit(ps, c, light, OverlayTexture.NO_OVERLAY, outline);
     }
 }
+//?}
+//? if >=1.21.9 <26.2 {
+/*import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.world.level.block.state.BlockState;
+
+// The lantern's block model, drawn through vanilla's own block submit (before 26.2 the game has no separate model resolver).
+public final class LanternModels {
+    private LanternModels() {
+    }
+
+    public static void submit(BlockState state, PoseStack ps, SubmitNodeCollector c, int light, int outline) {
+        c.submitBlock(ps, state, light, OverlayTexture.NO_OVERLAY, outline);
+    }
+}
+*///?}
+//? if <1.21.9 {
+/*import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.world.level.block.state.BlockState;
+
+// The lantern's block model, drawn straight into the entity's buffers (before 1.21.9 there is no submit collector).
+public final class LanternModels {
+    private LanternModels() {
+    }
+
+    public static void submit(BlockState state, PoseStack ps, MultiBufferSource c, int light, int outline) {
+        Minecraft.getInstance().getBlockRenderer().renderSingleBlock(state, ps, c, light, OverlayTexture.NO_OVERLAY);
+    }
+}
+*///?}
