@@ -114,6 +114,16 @@
       "mods": [
         "fabric-api-*.jar"
       ]
+    },
+    "sodiris": {
+      "profile": {
+        "26.2": "DH 26.2"
+      },
+      "mods": [
+        "sodium-fabric-*.jar",
+        "iris-*.jar",
+        "fabric-api-*.jar"
+      ]
     }
   },
   "tiers": {
