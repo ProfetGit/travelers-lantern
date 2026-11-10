@@ -7,7 +7,7 @@ import org.spongepowered.asm.mixin.Mixin;
  * sent by vanilla's equipment packets like any other slot, which the client applies through the same field).
  */
 //? if >=1.21.5 {
-@Mixin(net.minecraft.client.Minecraft.class)
+@Mixin(net.minecraft.world.entity.player.Player.class)
 public abstract class PlayerBeltMixin {
 }
 //?} else if >=1.20.5 {
