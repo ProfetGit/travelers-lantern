@@ -40,8 +40,12 @@ public final class DynamicLight {
     static final float LEVEL_STEP = 0.25F;
     /** Floats per source in `sources`: x, y, z, level, radius. */
     static final int STRIDE = 5;
-    /** Faces: light arriving at this cosine to the normal (behind the plane) gives nothing, at this one all of it. */
-    static final double FACE_BEHIND = -0.35, FACE_FRONT = 0.2;
+    /**
+     * Faces: light arriving at this cosine to the normal (behind the plane) gives nothing, at this one all of it. The
+     * facing test sees the lantern FACE_RAISE blocks higher than it hangs (the light is around the player, not at the
+     * hip), so the tops of ledges and floors above hip height still get light.
+     */
+    static final double FACE_BEHIND = -1.0, FACE_FRONT = 0.2, FACE_RAISE = 1.2;
     /** Easing time (seconds) of the light's height behind the lantern's. */
     static final float LIFT = 0.15F;
 
@@ -240,7 +244,8 @@ public final class DynamicLight {
             double dx = x - s[i], dy = y - s[i + 1], dz = z - s[i + 2];
             double d2 = dx * dx + dy * dy + dz * dz, r2 = s[i + 4] * s[i + 4];
             if (d2 >= r2) continue;
-            double cos = -(dx * nx + dy * ny + dz * nz) / Math.sqrt(Math.max(d2, 1e-4));
+            double ty = dy - FACE_RAISE;
+            double cos = -(dx * nx + ty * ny + dz * nz) / Math.sqrt(Math.max(dx * dx + ty * ty + dz * dz, 1e-4));
             double front = smooth((cos - FACE_BEHIND) / (FACE_FRONT - FACE_BEHIND));
             if (front <= 0) continue;
             best = Math.max(best, (float) (s[i + 3] * (1 - d2 / r2) * front));

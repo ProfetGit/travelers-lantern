@@ -234,7 +234,8 @@ public final class Director {
                 // the mean over the corners of a 5x5 patch, so a sweep across the surface counts as smooth
                 float sum = 0;
                 for (int x = 3; x <= 7; x++) for (int z = -2; z <= 2; z++) sum += DynamicLight.atFace(x, G + 2, z, 0, 1, 0);
-                stepLight.add(sum / 25);
+                // not the first ticks: the scene's teleport snaps the light onto the player, which is no step
+                if (t >= 3) stepLight.add(sum / 25);
             }
             case "sprint" -> {
                 hold(o.keyUp, t < 60);
