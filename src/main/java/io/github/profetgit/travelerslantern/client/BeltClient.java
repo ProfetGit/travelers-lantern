@@ -1,12 +1,13 @@
 package io.github.profetgit.travelerslantern.client;
 
 import io.github.profetgit.travelerslantern.TravelersLantern;
+import io.github.profetgit.travelerslantern.BeltSlot;
 import io.github.profetgit.travelerslantern.Config;
 import io.github.profetgit.travelerslantern.Lanterns;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 
@@ -61,8 +62,15 @@ public final class BeltClient {
     public static ItemStack beltOf(LivingEntity e) {
         Minecraft mc = Minecraft.getInstance();
         if (!serverMod && e == mc.player) return VirtualBelt.lantern(mc.player);
-        ItemStack s = e.getItemBySlot(EquipmentSlot.BODY);
+        ItemStack s = BeltSlot.get(e);
         return Lanterns.is(s) ? s : ItemStack.EMPTY;
+    }
+
+    /** Before 1.20.5: the server sent the belt of an entity (BeltNet). */
+    public static void receive(int id, ItemStack stack) {
+        Minecraft mc = Minecraft.getInstance();
+        Entity e = mc.level == null ? null : mc.level.getEntity(id);
+        if (e instanceof LivingEntity l) BeltSlot.set(l, stack);
     }
 
     /** True while the level's entities are being submitted (not the inventory preview or another GUI render). */

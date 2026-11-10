@@ -84,7 +84,7 @@ public final class DynamicLight {
 
     /** Every frame: at a higher rate setting, follow the lanterns up to that many times a second. */
     public static void frame(Minecraft mc) {
-        clock += Math.min(0.25, io.github.profetgit.travelerslantern.Compat.delta(mc).getRealtimeDeltaTicks() / 20.0);
+        clock += Math.min(0.25, io.github.profetgit.travelerslantern.Compat.realtimeDeltaTicks(mc) / 20.0);
         int rate = Config.get().lightUpdatesPerSecond;
         if (rate <= 20) return;
         if (clock - lastUpdate < 1.0 / rate - 0.0005) return;

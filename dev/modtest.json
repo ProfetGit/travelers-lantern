@@ -145,7 +145,8 @@
             "1.21.11",
             "1.21.8",
             "1.21.4",
-            "1.21.1"
+            "1.21.1",
+            "1.20.1"
           ],
           "loader": "fabric",
           "scenes": "all"
@@ -167,6 +168,26 @@
             "neoforge",
             "forge"
           ],
+          "scenes": "smoke"
+        },
+        {
+          "mc": [
+            "1.21.1",
+            "1.20.1"
+          ],
+          "loader": [
+            "neoforge",
+            "forge",
+            "quilt"
+          ],
+          "scenes": "smoke"
+        },
+        {
+          "mc": [
+            "26.3",
+            "26.2"
+          ],
+          "loader": "quilt",
           "scenes": "smoke"
         }
       ]
@@ -190,7 +211,8 @@
             "1.21.11",
             "1.21.8",
             "1.21.4",
-            "1.21.1"
+            "1.21.1",
+            "1.20.1"
           ],
           "loader": "fabric",
           "scenes": "all"
@@ -213,8 +235,202 @@
           "addons": [
             "profile"
           ]
+        },
+        {
+          "mc": [
+            "1.21.1",
+            "1.20.1"
+          ],
+          "loader": [
+            "neoforge",
+            "forge",
+            "quilt"
+          ],
+          "scenes": "all"
+        },
+        {
+          "mc": [
+            "26.3",
+            "26.2"
+          ],
+          "loader": "quilt",
+          "scenes": "smoke"
         }
       ]
+    }
+  },
+  "mp": {
+    "cases": {
+      "client_only": {
+        "server": "vanilla",
+        "clients": [
+          {
+            "user": "LanternCam",
+            "role": "wear",
+            "uuid": "5e1dcaa0-0000-4000-8000-00000000b001",
+            "seconds": 60,
+            "props": {
+              "travelers_lantern.demo": "{out}",
+              "travelers_lantern.demo.mp": "wear",
+              "travelers_lantern.demo.frames": "false",
+              "travelers_lantern.demo.mp.seconds": "60",
+              "travelers_lantern.demo.mp.players": "1"
+            }
+          }
+        ],
+        "steps": [
+          {
+            "wait": "LanternCam joined the game",
+            "send": [
+              "gamerule advance_time false",
+              "time set 18000",
+              "gamerule spawn_monsters false",
+              "gamerule spawn_mobs false",
+              "op LanternCam",
+              "gamemode survival LanternCam",
+              "give LanternCam lantern 2",
+              "tp LanternCam 0.5 -60 0.5 -90 0"
+            ]
+          },
+          {
+            "client": "wear",
+            "wait": "lantern cell (-?\\d+) (-?\\d+) (-?\\d+) light_moved",
+            "timeout": 200,
+            "as": "cell"
+          },
+          {
+            "name": "server/world",
+            "test": "execute if block {cell1} {cell2} {cell3} minecraft:air"
+          }
+        ]
+      },
+      "both": {
+        "clients": [
+          {
+            "user": "LanternCam",
+            "role": "wear",
+            "uuid": "5e1dcaa0-0000-4000-8000-00000000b001",
+            "seconds": 60,
+            "props": {
+              "travelers_lantern.demo": "{out}",
+              "travelers_lantern.demo.mp": "wear",
+              "travelers_lantern.demo.frames": "false",
+              "travelers_lantern.demo.mp.seconds": "60",
+              "travelers_lantern.demo.mp.players": "2"
+            }
+          },
+          {
+            "user": "LanternFriend",
+            "role": "watch",
+            "uuid": "5e1dcaa0-0000-4000-8000-00000000b002",
+            "seconds": 30,
+            "props": {
+              "travelers_lantern.demo": "{out}",
+              "travelers_lantern.demo.mp": "watch",
+              "travelers_lantern.demo.frames": "false",
+              "travelers_lantern.demo.mp.seconds": "30",
+              "travelers_lantern.demo.mp.players": "2"
+            }
+          }
+        ],
+        "steps": [
+          {
+            "wait": "LanternCam joined the game",
+            "send": [
+              "gamerule advance_time false",
+              "time set 18000",
+              "gamerule spawn_monsters false",
+              "gamerule spawn_mobs false",
+              "op LanternCam",
+              "gamemode survival LanternCam",
+              "give LanternCam lantern 2",
+              "tp LanternCam 0.5 -60 0.5 -90 0"
+            ]
+          },
+          {
+            "wait": "LanternFriend joined the game",
+            "timeout": 120,
+            "send": [
+              "tp LanternFriend 3.5 -60 -5.5 facing entity LanternCam"
+            ]
+          },
+          {
+            "client": "wear",
+            "wait": "lantern cell (-?\\d+) (-?\\d+) (-?\\d+) light_moved",
+            "timeout": 200,
+            "as": "cell"
+          },
+          {
+            "name": "server/world",
+            "test": "execute if block {cell1} {cell2} {cell3} minecraft:air"
+          },
+          {
+            "name": "server/no_fakes",
+            "send": [
+              "travelerslantern light"
+            ],
+            "expect": "0 light blocks shown to 0 players without the mod's own light, 2 players light them"
+          }
+        ]
+      },
+      "server_only": {
+        "clients": [
+          {
+            "user": "LanternCam",
+            "role": "wear",
+            "uuid": "5e1dcaa0-0000-4000-8000-00000000b001",
+            "seconds": 90,
+            "modded": false
+          }
+        ],
+        "steps": [
+          {
+            "wait": "LanternCam joined the game",
+            "send": [
+              "gamerule advance_time false",
+              "time set 18000",
+              "gamerule spawn_monsters false",
+              "gamerule spawn_mobs false",
+              "op LanternCam",
+              "gamemode survival LanternCam",
+              "give LanternCam lantern 2",
+              "tp LanternCam 0.5 -60 0.5 -90 0"
+            ]
+          },
+          {
+            "sleep": 12,
+            "send": [
+              "execute as LanternCam run travelerslantern"
+            ]
+          },
+          {
+            "name": "server_only/shown",
+            "sleep": 1.5,
+            "send": [
+              "travelerslantern light"
+            ],
+            "expect": "1 lanterns lit, 1 light blocks shown to 1 players"
+          },
+          {
+            "name": "server_only/world",
+            "test": "execute at LanternCam if block ~ ~ ~ minecraft:air"
+          },
+          {
+            "sleep": 0.5,
+            "send": [
+              "execute as LanternCam run travelerslantern"
+            ]
+          },
+          {
+            "name": "server_only/taken_back",
+            "sleep": 1.5,
+            "send": [
+              "travelerslantern light"
+            ],
+            "expect": "0 lanterns lit, 0 light blocks shown"
+          }
+        ]
+      }
     }
   }
 }

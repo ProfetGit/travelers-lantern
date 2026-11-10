@@ -96,7 +96,7 @@ final class MpDirector {
 
     /** This client lights its own lantern: the player and the ground beside it are lit, and no light block is involved. */
     static void lightCheck(Minecraft mc, boolean serverMod, String name) {
-        float partial = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
+        float partial = io.github.profetgit.travelerslantern.Compat.partialTick(mc);
         int self = mc.getEntityRenderDispatcher().getPackedLightCoords(mc.player, partial);
         BlockPos ground = mc.player.blockPosition().relative(net.minecraft.core.Direction.NORTH, 2);
         int floor = net.minecraft.util.LightCoordsUtil.getLightCoords(mc.level, ground);

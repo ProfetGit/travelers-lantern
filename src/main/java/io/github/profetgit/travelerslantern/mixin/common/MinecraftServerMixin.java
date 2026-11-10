@@ -15,7 +15,11 @@ public abstract class MinecraftServerMixin {
     @Inject(method = "tickServer", at = @At("TAIL"))
     private void travelerslantern$tick(BooleanSupplier hasTime, CallbackInfo ci) {
         MinecraftServer server = (MinecraftServer) (Object) this;
+        //? if >=1.21 {
         Config.load(server.getServerDirectory());
+        //?} else {
+        /*Config.load(server.getServerDirectory().toPath());
+        *///?}
         Belt.tick(server);
         Lights.tick(server);
     }

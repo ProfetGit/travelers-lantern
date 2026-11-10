@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.Mixin;
 @Mixin(net.minecraft.client.Minecraft.class)
 public abstract class PlayerBeltMixin {
 }
-//?} else {
+//?} else if >=1.20.5 {
 /*@Mixin(net.minecraft.world.entity.player.Player.class)
 public abstract class PlayerBeltMixin {
     @org.spongepowered.asm.mixin.Unique
@@ -42,6 +42,34 @@ public abstract class PlayerBeltMixin {
             travelerslantern$belt = net.minecraft.world.item.ItemStack.parse(((net.minecraft.world.entity.Entity) (Object) this).registryAccess(),
                 tag.get("TravelersLanternBelt")).orElse(net.minecraft.world.item.ItemStack.EMPTY);
         }
+    }
+}
+*///?}
+//? if <1.20.5 {
+/*@Mixin(net.minecraft.world.entity.player.Player.class)
+public abstract class PlayerBeltMixin implements io.github.profetgit.travelerslantern.BeltSlot.Holder {
+    @org.spongepowered.asm.mixin.Unique
+    private net.minecraft.world.item.ItemStack travelerslantern$belt = net.minecraft.world.item.ItemStack.EMPTY;
+
+    @Override
+    public net.minecraft.world.item.ItemStack travelerslantern$getBelt() {
+        return travelerslantern$belt;
+    }
+
+    @Override
+    public void travelerslantern$setBelt(net.minecraft.world.item.ItemStack stack) {
+        travelerslantern$belt = stack;
+    }
+
+    @org.spongepowered.asm.mixin.injection.Inject(method = "addAdditionalSaveData", at = @org.spongepowered.asm.mixin.injection.At("TAIL"))
+    private void travelerslantern$save(net.minecraft.nbt.CompoundTag tag, org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
+        if (!travelerslantern$belt.isEmpty()) tag.put("TravelersLanternBelt", travelerslantern$belt.save(new net.minecraft.nbt.CompoundTag()));
+    }
+
+    @org.spongepowered.asm.mixin.injection.Inject(method = "readAdditionalSaveData", at = @org.spongepowered.asm.mixin.injection.At("TAIL"))
+    private void travelerslantern$load(net.minecraft.nbt.CompoundTag tag, org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
+        travelerslantern$belt = tag.contains("TravelersLanternBelt", 10)
+            ? net.minecraft.world.item.ItemStack.of(tag.getCompound("TravelersLanternBelt")) : net.minecraft.world.item.ItemStack.EMPTY;
     }
 }
 *///?}

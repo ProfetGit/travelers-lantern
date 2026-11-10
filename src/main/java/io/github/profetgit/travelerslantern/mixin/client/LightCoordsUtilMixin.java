@@ -24,6 +24,8 @@ public abstract class LightCoordsUtilMixin {
     private static void travelerslantern$dynamic(LightCoordsUtil.BrightnessGetter getter, BlockAndLightGetter level, BlockState state, BlockPos pos,
                                             CallbackInfoReturnable<Integer> cir) {
         if (!DynamicLight.active() || !(level instanceof ClientLevel || level instanceof RenderSectionRegion)) return;
+        // vanilla's smooth-lighting blend treats a corner cell with no light (inside a block) as missing and uses the face's own light; a lantern's light inside solid blocks would flip that at the edge of its reach, popping the dark corners
+        if (io.github.profetgit.travelerslantern.Compat.solid(state, level, pos)) return;
         int packed = cir.getReturnValueI();
         int lit = DynamicLight.apply(packed, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
         if (lit != packed) cir.setReturnValue(lit);
@@ -49,6 +51,8 @@ public abstract class LightCoordsUtilMixin {
     private static void travelerslantern$dynamic(LevelRenderer.BrightnessGetter getter, BlockAndTintGetter level, BlockState state, BlockPos pos,
                                             CallbackInfoReturnable<Integer> cir) {
         if (!DynamicLight.active() || !(level instanceof ClientLevel || level instanceof RenderSectionRegion)) return;
+        // vanilla's smooth-lighting blend treats a corner cell with no light (inside a block) as missing and uses the face's own light; a lantern's light inside solid blocks would flip that at the edge of its reach, popping the dark corners
+        if (io.github.profetgit.travelerslantern.Compat.solid(state, level, pos)) return;
         int packed = cir.getReturnValueI();
         int lit = DynamicLight.apply(packed, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
         if (lit != packed) cir.setReturnValue(lit);

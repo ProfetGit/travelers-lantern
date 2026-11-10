@@ -10,7 +10,9 @@
   "license": "LicenseRef-All-Rights-Reserved",
   "environment": "*",
   "entrypoints": {
-    "main": ["io.github.profetgit.travelerslantern.platform.fabric.FabricEntry"]
+    "main": [
+      "io.github.profetgit.travelerslantern.platform.fabric.FabricEntry"
+    ]
   },
   "mixins": ["travelers_lantern.mixins.json"],
   "depends": {

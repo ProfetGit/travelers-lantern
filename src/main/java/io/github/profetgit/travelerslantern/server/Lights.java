@@ -114,7 +114,13 @@ public final class Lights {
     }
 
     private static boolean tracks(ServerPlayer viewer, BlockPos pos) {
+        //? if >=1.20.2 {
         return viewer.getChunkTrackingView().contains(SectionPos.blockToSectionCoord(pos.getX()), SectionPos.blockToSectionCoord(pos.getZ()));
+        //?} else {
+        /*int view = viewer.server.getPlayerList().getViewDistance();
+        net.minecraft.world.level.ChunkPos at = viewer.chunkPosition();
+        return Math.abs(SectionPos.blockToSectionCoord(pos.getX()) - at.x) <= view && Math.abs(SectionPos.blockToSectionCoord(pos.getZ()) - at.z) <= view;
+        *///?}
     }
 
     /** The first usable cell of: the lantern's cell, the feet cell, the head cell; the current cell while it's one of them. */

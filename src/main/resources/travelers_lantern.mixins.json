@@ -9,13 +9,15 @@
     "common.InventoryMixin",
     "common.MinecraftServerMixin",
     "common.PlayerBeltMixin",
-    "common.PlayerListMixin"
+    "common.PlayerListMixin",
+    "common.ServerEntityMixin"
   ],
   "client": [
     "client.AvatarRenderStateMixin",
     "client.AvatarRendererMixin",
     "client.BlockStatePredictionHandlerMixin",
     "client.CameraMixin",
+    "client.ClientPacketListenerMixin",
     "client.ClientLanguageMixin",
     "client.ClientLevelMixin",
     "client.EntityRendererMixin",

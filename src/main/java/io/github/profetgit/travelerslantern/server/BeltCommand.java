@@ -36,10 +36,12 @@ public final class BeltCommand {
             .then(Commands.literal("client")
                 .then(Commands.literal("smooth").executes(ctx -> {
                     Lights.setSmooth(ctx.getSource().getPlayerOrException(), true);
+                    Belt.hello(ctx.getSource().getPlayerOrException());
                     return 1;
                 }))
                 .then(Commands.literal("blocks").executes(ctx -> {
                     Lights.setSmooth(ctx.getSource().getPlayerOrException(), false);
+                    Belt.hello(ctx.getSource().getPlayerOrException());
                     return 1;
                 }))));
     }

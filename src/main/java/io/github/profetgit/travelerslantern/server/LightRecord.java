@@ -60,7 +60,7 @@ public final class LightRecord extends SavedData {
         return level.getDataStorage().computeIfAbsent(type(level));
     }
     *///?}
-    //? if <1.21.5 {
+    //? if >=1.20.5 <1.21.5 {
     /*// before 1.21.5 the data is NBT: a factory and a file name per dimension
     private static final String KEY = "travelers_lantern_lights_";
 
@@ -79,6 +79,27 @@ public final class LightRecord extends SavedData {
     public static LightRecord of(ServerLevel level) {
         String dim = level.dimension().identifier().toString().replace(':', '_').replace('/', '_');
         return level.getDataStorage().computeIfAbsent(new SavedData.Factory<>(LightRecord::new, LightRecord::load, DataFixTypes.SAVED_DATA_COMMAND_STORAGE), KEY + dim);
+    }
+    *///?}
+    //? if <1.20.5 {
+    /*// before 1.20.5 the data is NBT with no registries and no factory: a file name per dimension
+    private static final String KEY = "travelers_lantern_lights_";
+
+    @Override
+    public net.minecraft.nbt.CompoundTag save(net.minecraft.nbt.CompoundTag tag) {
+        tag.putLongArray("positions", positions.toLongArray());
+        return tag;
+    }
+
+    private static LightRecord load(net.minecraft.nbt.CompoundTag tag) {
+        LightRecord r = new LightRecord();
+        for (long p : tag.getLongArray("positions")) r.positions.add(p);
+        return r;
+    }
+
+    public static LightRecord of(ServerLevel level) {
+        String dim = level.dimension().identifier().toString().replace(':', '_').replace('/', '_');
+        return level.getDataStorage().computeIfAbsent(LightRecord::load, LightRecord::new, KEY + dim);
     }
     *///?}
 

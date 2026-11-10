@@ -293,7 +293,7 @@ public final class Director {
         int drawn = BeltLayer.drawnLocal - drawnAtStart;
         switch (s) {
             case "hang" -> {
-                onServer(mc, "belt", sp -> Lanterns.is(sp.getItemBySlot(Belt.SLOT)), sp -> "server belt: " + sp.getItemBySlot(Belt.SLOT));
+                onServer(mc, "belt", sp -> Lanterns.is(io.github.profetgit.travelerslantern.BeltSlot.get(sp)), sp -> "server belt: " + io.github.profetgit.travelerslantern.BeltSlot.get(sp));
                 check("client_belt", !BeltClient.beltOf(mc.player).isEmpty(), "client sees " + BeltClient.beltOf(mc.player) + ", server mod " + BeltClient.serverHasMod());
                 int left = count(mc.player.getInventory().getNonEquipmentItems());
                 check("taken_one", left == 1, left + " lanterns left in the inventory (2 given)");
@@ -348,7 +348,7 @@ public final class Director {
                     + DynamicLight.rebuilt + " sections so far)");
             }
             case "off" -> {
-                onServer(mc, "belt_empty", sp -> sp.getItemBySlot(Belt.SLOT).isEmpty(), sp -> "server belt: " + sp.getItemBySlot(Belt.SLOT));
+                onServer(mc, "belt_empty", sp -> io.github.profetgit.travelerslantern.BeltSlot.get(sp).isEmpty(), sp -> "server belt: " + io.github.profetgit.travelerslantern.BeltSlot.get(sp));
                 check("in_hand", Lanterns.is(mc.player.getMainHandItem()) || count(mc.player.getInventory().getNonEquipmentItems()) == 2,
                     "hand " + mc.player.getMainHandItem() + ", " + count(mc.player.getInventory().getNonEquipmentItems()) + " in the inventory");
                 onServer(mc, "no_light", sp -> Lights.cellOf(sp.getUUID()) == null && lightsNear(sp) == 0,
@@ -358,11 +358,11 @@ public final class Director {
                     "dynamic light " + DynamicLight.at(mc.player.getX(), mc.player.getY() + 0.6, mc.player.getZ()));
             }
             case "death" -> {
-                onServer(mc, "belt_empty", sp -> sp.getItemBySlot(Belt.SLOT).isEmpty(), sp -> "respawned belt: " + sp.getItemBySlot(Belt.SLOT));
+                onServer(mc, "belt_empty", sp -> io.github.profetgit.travelerslantern.BeltSlot.get(sp).isEmpty(), sp -> "respawned belt: " + io.github.profetgit.travelerslantern.BeltSlot.get(sp));
                 onServer(mc, "no_light", sp -> Lights.cellOf(sp.getUUID()) == null && lightsNear(sp) == 0, sp -> Lights.status());
             }
             case "keep" -> {
-                onServer(mc, "kept", sp -> Lanterns.is(sp.getItemBySlot(Belt.SLOT)), sp -> "respawned belt: " + sp.getItemBySlot(Belt.SLOT));
+                onServer(mc, "kept", sp -> Lanterns.is(io.github.profetgit.travelerslantern.BeltSlot.get(sp)), sp -> "respawned belt: " + io.github.profetgit.travelerslantern.BeltSlot.get(sp));
                 check("client_kept", !BeltClient.beltOf(mc.player).isEmpty(), "client sees " + BeltClient.beltOf(mc.player));
             }
             default -> {
@@ -376,7 +376,7 @@ public final class Director {
      * ground it glows softly (about 7 of 15 at the player), at midnight it is at full strength and reaches farther.
      */
     static void lightChecks(Minecraft mc, String name, boolean day) {
-        float partial = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
+        float partial = io.github.profetgit.travelerslantern.Compat.partialTick(mc);
         float self = (mc.getEntityRenderDispatcher().getPackedLightCoords(mc.player, partial) & 0xFFFF) / 16F;
         BlockPos ground = mc.player.blockPosition().relative(net.minecraft.core.Direction.NORTH, 2);
         float floor = (net.minecraft.util.LightCoordsUtil.getLightCoords(mc.level, ground) & 0xFFFF) / 16F;
@@ -517,7 +517,7 @@ public final class Director {
         if (!recording || done || mc.player == null) return;
         Path dir = OUT.resolve(SCENES[scene]);
         int n = frame++;
-        float partial = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
+        float partial = io.github.profetgit.travelerslantern.Compat.partialTick(mc);
         double[] sw = Swing.debug(mc.player.getId());
         String line = n + " " + System.nanoTime() + " " + sceneTick + " " + f(partial);
         if (sw != null) {

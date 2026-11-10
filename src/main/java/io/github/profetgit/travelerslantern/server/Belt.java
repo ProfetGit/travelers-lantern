@@ -1,6 +1,7 @@
 package io.github.profetgit.travelerslantern.server;
 
 import com.mojang.datafixers.util.Pair;
+import io.github.profetgit.travelerslantern.BeltSlot;
 import io.github.profetgit.travelerslantern.Lanterns;
 import java.util.HashMap;
 import java.util.List;
@@ -15,7 +16,6 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -24,10 +24,10 @@ import net.minecraft.world.item.ItemStack;
 /**
  * The belt, server side. The lantern is stored in the player's BODY equipment slot, which players don't otherwise use:
  * it's saved with the player, and vanilla already sends it to every client that sees the player (a client without the
- * mod ignores it). The player's own client isn't sent its equipment, so that one goes out here.
+ * mod ignores it). The player's own client isn't sent its equipment, so that one goes out here. Before 1.20.5 there is no
+ * BODY slot: the belt is a field of the player (BeltSlot) and BeltNet sends it to the clients that have the mod.
  */
 public final class Belt {
-    public static final EquipmentSlot SLOT = EquipmentSlot.BODY;
     /**
      * Per player: what their own client was last sent, and to which player object in which dimension. A respawn makes a
      * new player object and a dimension change a new client player, and either starts with an empty belt on the client.
@@ -42,7 +42,7 @@ public final class Belt {
 
     /** The lantern on the player's belt, or empty. */
     public static ItemStack get(Player p) {
-        ItemStack s = p.getItemBySlot(SLOT);
+        ItemStack s = BeltSlot.get(p);
         return Lanterns.is(s) ? s : ItemStack.EMPTY;
     }
 
@@ -52,13 +52,13 @@ public final class Belt {
             say(p, "Spectators can't carry a lantern");
             return 0;
         }
-        ItemStack on = p.getItemBySlot(SLOT);
+        ItemStack on = BeltSlot.get(p);
         if (!on.isEmpty()) {
             if (!Lanterns.is(on)) {
                 say(p, "Something else is worn there");
                 return 0;
             }
-            p.setItemSlot(SLOT, ItemStack.EMPTY);
+            BeltSlot.set(p, ItemStack.EMPTY);
             giveBack(p, on);
             sound(p, false);
             say(p, "Lantern off your belt");
@@ -70,7 +70,7 @@ public final class Belt {
             say(p, "No lantern to hang on your belt");
             return 0;
         }
-        p.setItemSlot(SLOT, src.split(1));
+        BeltSlot.set(p, src.split(1));
         sound(p, true);
         say(p, "Lantern on your belt");
         sync(p);
@@ -126,8 +126,12 @@ public final class Belt {
 
     /** Sends the player's own belt to their client. */
     static void sync(ServerPlayer p) {
-        ItemStack s = p.getItemBySlot(SLOT).copy();
-        p.connection.send(new ClientboundSetEquipmentPacket(p.getId(), List.of(Pair.of(SLOT, s))));
+        ItemStack s = BeltSlot.get(p).copy();
+        //? if >=1.20.5 {
+        p.connection.send(new ClientboundSetEquipmentPacket(p.getId(), List.of(Pair.of(net.minecraft.world.entity.EquipmentSlot.BODY, s))));
+        //?} else {
+        /*BeltNet.broadcast(p, s);
+        *///?}
         SENT.put(p.getUUID(), new Sent(p, p.level(), s));
     }
 
@@ -135,31 +139,44 @@ public final class Belt {
     public static void tick(MinecraftServer server) {
         for (ServerPlayer p : server.getPlayerList().getPlayers()) {
             Sent s = SENT.get(p.getUUID());
-            ItemStack cur = p.getItemBySlot(SLOT);
+            ItemStack cur = BeltSlot.get(p);
             if (s == null ? !cur.isEmpty() : s.player() != p || s.level() != p.level() || !ItemStack.matches(s.stack(), cur)) sync(p);
         }
     }
 
+    /** A client with the mod says so (/travelerslantern client ...): before 1.20.5 it gets the belts it missed. */
+    public static void hello(ServerPlayer p) {
+        //? if <1.20.5 {
+        /*BeltNet.hello(p);
+        *///?}
+    }
+
     public static void forget(ServerPlayer p) {
+        //? if <1.20.5 {
+        /*BeltNet.forget(p);
+        *///?}
         SENT.remove(p.getUUID());
     }
 
     public static void clear() {
+        //? if <1.20.5 {
+        /*BeltNet.clear();
+        *///?}
         SENT.clear();
     }
 
     /** Death without keepInventory (Inventory.dropAll): the lantern drops with the rest. */
     public static void dropOnDeath(Player p) {
         if (!(p instanceof ServerPlayer sp)) return;
-        ItemStack s = sp.getItemBySlot(SLOT);
+        ItemStack s = BeltSlot.get(sp);
         if (!Lanterns.is(s)) return;
-        sp.setItemSlot(SLOT, ItemStack.EMPTY);
+        BeltSlot.set(sp, ItemStack.EMPTY);
         drop(sp, s, true);
     }
 
     /** Respawn with keepInventory (or back from the End): Inventory.replaceWith copies only the inventory's own slots. */
     public static void carryOver(Player from, Player to) {
-        ItemStack s = from.getItemBySlot(SLOT);
-        if (Lanterns.is(s) && to.getItemBySlot(SLOT).isEmpty()) to.setItemSlot(SLOT, s.copy());
+        ItemStack s = BeltSlot.get(from);
+        if (Lanterns.is(s) && BeltSlot.get(to).isEmpty()) BeltSlot.set(to, s.copy());
     }
 }
