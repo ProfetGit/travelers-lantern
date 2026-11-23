@@ -49,6 +49,19 @@ public final class Swing {
     static final double MAX_TWIST = Math.toRadians(50);
     /** Impact speed (blocks per second) for a clink. */
     static final double CLINK_SPEED = 0.8;
+    /**
+     * A hook that moves on the body faster than this (blocks per second, relative to the wearer) has had its pose
+     * switched (sneak, a jump's tuck, an animation pack's cut): the whole pendulum moves with it instead of the weight
+     * being left behind, which would fling the rod across in one frame.
+     */
+    static final double POSE_JUMP = Double.parseDouble(System.getProperty("travelers_lantern.tune.poseJump", "3"));
+    /** The drawn rod follows the simulated one with this time constant (seconds) and at most this fast (radians per second). */
+    static final double SHOW_TAU = Double.parseDouble(System.getProperty("travelers_lantern.tune.showTau", "0.03"));
+    static final double SHOW_RATE = Math.toRadians(Double.parseDouble(System.getProperty("travelers_lantern.tune.showRate", "600")));
+    static final double SHOW_TWIST_RATE = Math.toRadians(900);
+
+    /** Test hooks: bumps hard enough to clink, and clinks actually played. */
+    public static int impacts, clinksPlayed;
 
     private static final Int2ObjectOpenHashMap<Swing> ALL = new Int2ObjectOpenHashMap<>();
     private static int frame;
@@ -67,6 +80,9 @@ public final class Swing {
     /** Frames when this swing was last drawn, and last stepped (drawn in the world pass). */
     int seen, stepped = -1000;
     double lastClink = -10, impact;
+    /** The rod as drawn: unit direction in world space, its twist, and the time it was last moved. */
+    final Vector3f shown = new Vector3f(0, -1, 0);
+    double shownTwist, shownT = -1;
     /** The last rod direction in the hook's own frame, reused by passes that don't step (GUI, shadows). */
     final Vector3f local = new Vector3f(0, 1, 0);
     float twist;
@@ -107,7 +123,9 @@ public final class Swing {
     public static double[] debug(int entityId) {
         Swing s = ALL.get(entityId);
         if (s == null || s.t < 0) return null;
-        return new double[] {s.bx, s.by, s.bz, s.hx, s.hy, s.hz, s.yaw, Math.toDegrees(s.bodyYaw), s.twist};
+        double len = Math.sqrt(sq(s.bx - s.hx, s.by - s.hy, s.bz - s.hz));
+        return new double[] {s.hx + s.shown.x * len, s.hy + s.shown.y * len, s.hz + s.shown.z * len, s.hx, s.hy, s.hz, s.yaw,
+            Math.toDegrees(s.bodyYaw), s.twist, s.t};
     }
 
     /**
@@ -160,7 +178,16 @@ public final class Swing {
             sy = ny;
             sz = nz;
         }
+        double ex = 0, ey = 0, ez = 0;
         if (dt > 0) {
+            double rx = nx - ox - (hx - lox), ry = ny - oy - (hy - loy), rz = nz - oz - (hz - loz);
+            double rl = Math.sqrt(rx * rx + ry * ry + rz * rz), allowed = POSE_JUMP * dt + 0.005;
+            if (rl > allowed) {
+                double k = (rl - allowed) / rl;
+                ex = rx * k;
+                ey = ry * k;
+                ez = rz * k;
+            }
             int n = Math.min(60, (int) Math.ceil(dt / STEP));
             double hs = dt / n, damp = Math.exp(-DAMP * hs), g = GRAVITY * hs * hs;
             double lastBody = bodyYaw, dBody = wrap(body - lastBody);
@@ -172,7 +199,7 @@ public final class Swing {
             if (Math.abs(dPhase) > 3) dPhase = 0; // the walk animation restarted
             for (int k = 1; k <= n; k++) {
                 double f = (double) k / n;
-                double ax = hx + (nx - hx) * f, ay = hy + (ny - hy) * f, az = hz + (nz - hz) * f;
+                double ax = hx + (nx - ex - hx) * f, ay = hy + (ny - ey - hy) * f, az = hz + (nz - ez - hz) * f;
                 // the hips' stride motion, in the body's frame: forward with this side's leg, down at footfalls, sideways
                 double ph = phase + dPhase * f, amp = stride + (walkAmp - stride) * f, yw = lastBody + dBody * f;
                 double surge = HIP_SURGE * amp * Math.cos(ph) * side, dip = HIP_DIP * amp * (Math.cos(2 * ph) - 1) / 2;
@@ -218,7 +245,10 @@ public final class Swing {
                 yaw = body + Math.copySign(MAX_TWIST, tw);
                 yawVel = 0;
             }
-            if (impact > CLINK_SPEED && now - lastClink > 0.35 && Config.get().clinks) clink(now, Math.min(1, (impact - CLINK_SPEED) / 1.5));
+            if (impact > CLINK_SPEED && now - lastClink > 0.35) {
+                impacts++;
+                if (Config.get().clinks && Config.get().clinkVolume > 0) clink(now, Math.min(1, (impact - CLINK_SPEED) / 1.5));
+            }
             t = now;
             phase = walkPhase;
             stride = walkAmp;
@@ -226,15 +256,49 @@ public final class Swing {
             lox = ox;
             loy = oy;
             loz = oz;
+            // the pose switch happened between two frames: everything that hangs from the hook went with it
+            bx += ex;
+            by += ey;
+            bz += ez;
+            px += ex;
+            py += ey;
+            pz += ez;
+            sx += ex;
+            sy += ey;
+            sz += ez;
         }
         hx = nx;
         hy = ny;
         hz = nz;
+        // the rod as drawn eases toward the simulated one, so no single frame can throw it across
+        Vector3f w = new Vector3f((float) (bx - hx), (float) (by - hy), (float) (bz - hz));
+        double tw = wrap(yaw - body);
+        if (w.lengthSquared() > 1e-10) {
+            w.normalize();
+            double sdt = now - shownT;
+            if (jump || shownT < 0 || sdt <= 0 || sdt > 0.5) {
+                shown.set(w);
+                shownTwist = tw;
+            } else {
+                double ang = Math.acos(Math.max(-1, Math.min(1, shown.dot(w))));
+                double stepA = Math.min(ang * (1 - Math.exp(-sdt / SHOW_TAU)), SHOW_RATE * sdt);
+                Vector3f axis = shown.cross(w, new Vector3f());
+                if (ang > 1e-6 && axis.lengthSquared() > 1e-12) {
+                    axis.normalize();
+                    shown.rotateAxis((float) stepA, axis.x, axis.y, axis.z).normalize();
+                } else if (ang > 1e-6) {
+                    shown.set(w);
+                }
+                double dtw = wrap(tw - shownTwist);
+                shownTwist = wrap(shownTwist + Math.copySign(Math.min(Math.abs(dtw) * (1 - Math.exp(-sdt / SHOW_TAU)), SHOW_TWIST_RATE * sdt), dtw));
+            }
+            shownT = now;
+        }
         // the rod in the hook's own frame, for the renderer
-        Vector3f d = new Vector3f((float) (bx - hx), (float) (by - hy), (float) (bz - hz));
+        Vector3f d = new Vector3f(shown);
         new Matrix4f(hook).invert().transformDirection(d);
         if (d.lengthSquared() > 1e-10) local.set(d.normalize());
-        twist = (float) wrap(yaw - body);
+        twist = (float) shownTwist;
     }
 
     /** Keeps the weight at rod length from the hook. */
@@ -353,7 +417,8 @@ public final class Swing {
         ClientLevel lv = level;
         if (lv == null) return;
         lastClink = now;
-        lv.playLocalSound(bx, by, bz, SoundEvents.LANTERN_HIT, SoundSource.PLAYERS, (float) (0.05 + 0.1 * strength),
+        clinksPlayed++;
+        lv.playLocalSound(bx, by, bz, SoundEvents.LANTERN_HIT, SoundSource.PLAYERS, (float) ((0.05 + 0.1 * strength) * Config.get().clinkVolume / 100.0),
             1.6F + (float) (Math.random() * 0.3), false);
     }
 

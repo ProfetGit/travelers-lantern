@@ -4,7 +4,10 @@ import io.github.profetgit.travelerslantern.platform.Platform;
 import java.nio.file.Path;
 import java.util.List;
 import net.minecraftforge.api.distmarker.Dist;
+import io.github.profetgit.travelerslantern.SettingsScreen;
+import net.minecraftforge.client.ConfigScreenHandler;
 import net.minecraftforge.fml.ModList;
+import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.loading.FMLEnvironment;
 import net.minecraftforge.fml.loading.FMLPaths;
@@ -13,6 +16,12 @@ import net.minecraftforge.fml.loading.FMLPaths;
 public final class ForgeEntry implements Platform {
     public ForgeEntry() {
         Platform.set(this);
+        if (FMLEnvironment.dist == Dist.CLIENT) registerScreen();
+    }
+
+    private static void registerScreen() {
+        ModLoadingContext.get().registerExtensionPoint(ConfigScreenHandler.ConfigScreenFactory.class,
+            () -> new ConfigScreenHandler.ConfigScreenFactory((mc, parent) -> new SettingsScreen(parent)));
     }
 
     @Override

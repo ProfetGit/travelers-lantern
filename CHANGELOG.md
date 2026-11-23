@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.20 — 2026-11-23
+
+- New: Minecraft 1.21.11 on Fabric, Quilt, NeoForge and Forge.
+- The swing is smoother. Sneaking, jumping, quick turns and body-animation packs used to throw the lantern across in a single frame; the lantern now moves with a sudden pose change and its drawn swing eases to the simulation (never faster than about 600 degrees a second).
+- New: a settings screen (Mod Menu on Fabric and Quilt, the mod list on NeoForge and Forge) with clink sounds on/off, clink volume (0 is silent), hip side, lantern light, smooth light, light updates per second and softer daylight light. `clinkVolume` (0 to 100) is also in `config/travelers_lantern.json`.
+- Shader packs with Iris get a colour for the held lantern light: amber for a lantern, blue for a soul lantern, green for the copper lanterns (packs that read it, or colour by item such as Complementary). Other players' lanterns light as before.
+
 ## 0.2.19 — 2026-11-15
 
 - Minecraft 1.21.1 Forge gets 0.2.18's full-strength daylight light. It was held back by a problem in our test setup, not in the mod: nothing changes for players.

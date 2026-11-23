@@ -36,6 +36,8 @@ public final class Config {
     public boolean leftSide = true;
     /** Client: the lantern clinks quietly when it knocks against a leg. */
     public boolean clinks = true;
+    /** Client: how loud the clinks are, in percent (0 is silent). */
+    public int clinkVolume = 100;
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static Config current;
@@ -63,6 +65,7 @@ public final class Config {
         String rate = System.getProperty("travelers_lantern.demo.rate", "");
         if (!rate.isEmpty()) current.lightUpdatesPerSecond = Integer.parseInt(rate);
         current.lightUpdatesPerSecond = Math.max(20, Math.min(60, current.lightUpdatesPerSecond));
+        current.clinkVolume = Math.max(0, Math.min(100, current.clinkVolume));
         save();
     }
 

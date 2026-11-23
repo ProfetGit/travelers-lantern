@@ -225,5 +225,11 @@
     "regex": "Inventory\\.SELECTION_SIZE",
     "to": "9",
     "when": "<1.21.2"
+  },
+  {
+    "regex": "screens\\.options\\.OptionsSubScreen",
+    "to": "screens.OptionsSubScreen",
+    "when": "<1.21",
+    "files": "^SettingsScreen\\.java$"
   }
 ]

@@ -26,6 +26,9 @@ public final class BeltClient {
     private static boolean toldSmooth;
     /** Test hook: frames Iris's off-hand light was the belt lantern. */
     public static long irisHeld;
+    /** Test hook: the colour handed to the shader pack's held light the last time. */
+    public static float[] irisColor;
+    public static int irisId;
 
     private BeltClient() {
     }

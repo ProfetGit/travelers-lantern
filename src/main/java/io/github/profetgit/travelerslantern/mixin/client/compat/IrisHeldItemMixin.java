@@ -53,7 +53,10 @@ public abstract class IrisHeldItemMixin {
         Identifier id = BuiltInRegistries.ITEM.getKey(belt.getItem());
         intID = itemIdMap.applyAsInt(new NamespacedId(id.getNamespace(), id.getPath()));
         lightValue = light;
-        lightColor = new Vector3f(1, 1, 1);
+        float[] c = Lanterns.color(belt);
+        lightColor = new Vector3f(c[0], c[1], c[2]);
+        io.github.profetgit.travelerslantern.client.BeltClient.irisColor = c;
+        io.github.profetgit.travelerslantern.client.BeltClient.irisId = intID;
         io.github.profetgit.travelerslantern.client.BeltClient.irisHeld++;
     }
 }

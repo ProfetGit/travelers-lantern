@@ -34,11 +34,11 @@ On a server without the mod the lantern stays an ordinary item in your inventory
 
 ![Settings](https://raw.githubusercontent.com/ProfetGit/travelers-lantern/main/docs/desc/title-settings.webp)
 
-The settings are in `config/travelers_lantern.json`: `softInDaylight` (off by default: on, the light is softer in bright places), `smoothLight` (off: the light moves a block at a time, which is lighter on slow computers), `lightUpdatesPerSecond` (20 to 60), `clientLight` (the lantern lights things at all), `leftSide` (which hip) and `clinks`. On a server, operators can use `/travelerslantern light [true|false]` to turn the light off or on for players who don't have the mod.
+The settings are in a screen (Mod Menu on Fabric and Quilt, the mod list on NeoForge and Forge) and in `config/travelers_lantern.json`: `clinks` and `clinkVolume` (0 to 100; 0 mutes the lantern on your belt), `softInDaylight` (off by default: on, the light is softer in bright places), `smoothLight` (off: the light moves a block at a time, which is lighter on slow computers), `lightUpdatesPerSecond` (20 to 60), `clientLight` (the lantern lights things at all), `leftSide` (which hip). On a server, operators can use `/travelerslantern light [true|false]` to turn the light off or on for players who don't have the mod.
 
 ![Compatibility](https://raw.githubusercontent.com/ProfetGit/travelers-lantern/main/docs/desc/title-compatibility.webp)
 
-- Works with Sodium, and with Iris shaders: shader packs see the belt lantern as a held light.
+- Works with Sodium, and with Iris shaders: shader packs see the belt lantern as a held light, with its own colour (amber, blue for a soul lantern, green for copper lanterns) for packs that use it.
 - Works with Fresh Animations and its player animations: the lantern follows the animated hips.
 - Client and server are both optional: a client with the mod can join any server, and a client without it can join a server that has it.
 

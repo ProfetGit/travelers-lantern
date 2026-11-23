@@ -1,6 +1,7 @@
 package io.github.profetgit.travelerslantern.demo;
 
 import com.mojang.blaze3d.platform.NativeImage;
+import io.github.profetgit.travelerslantern.Config;
 import io.github.profetgit.travelerslantern.TravelersLantern;
 import io.github.profetgit.travelerslantern.Lanterns;
 import io.github.profetgit.travelerslantern.client.BeltClient;
@@ -116,6 +117,20 @@ public final class Director {
     static double maxAngle, lastAngle, maxTwist, walkAngle, restLo, restHi, restSpread;
     static int drawnAtStart;
     static long busyAtStart, busyAtWalkEnd;
+    static int clinksAtStart, impactsAtStart;
+    static final List<String> colourLog = new ArrayList<>();
+    static final List<float[]> colourSeen = new ArrayList<>();
+    static final List<Integer> colourIds = new ArrayList<>();
+    /**
+     * Smoothness of the swing, in the wearer's frame, per rendered frame: the angle the rod moved (degrees) over the
+     * simulation time that passed, its change in speed, and the frames where it moved more than a person can follow.
+     */
+    static double pdx, pdy, pdz, plen, prevT = Double.NaN, prevOmega, maxOmega, maxAlpha, maxStep;
+    static int snaps, smoothFrames, maxStepTick;
+    /** A rod that moves more than this in one frame (1200 degrees a second at 60 fps) reads as a teleport. */
+    static final double SNAP_DEG = 20;
+    static final java.util.Set<String> SMOOTH = java.util.Set.of("walk", "sprint", "jump", "turn", "sneak", "dodge", "stop");
+    static final double MAX_OMEGA = Double.parseDouble(System.getProperty("travelers_lantern.demo.maxOmega", "700"));
 
     private Director() {
     }
@@ -154,6 +169,9 @@ public final class Director {
             }
             sceneTick = -1;
             maxAngle = lastAngle = maxTwist = walkAngle = restSpread = 0;
+            prevT = Double.NaN;
+            prevOmega = maxOmega = maxAlpha = maxStep = 0;
+            snaps = smoothFrames = 0;
             restLo = 999;
             restHi = -999;
             drawnAtStart = BeltLayer.drawnLocal;
@@ -171,7 +189,8 @@ public final class Director {
         // Forge 1.21.1 runs --quickPlaySingleplayer before it starts its event bus, so the world's first datapack load
         // fires AddReloadListenerEvent into a stopped bus: no LootModifierManager, every loot table throws (no death
         // drops). Worlds opened from the menu load after the bus starts. A /reload gives Forge its reload event.
-        if ("forge".equals(io.github.profetgit.travelerslantern.platform.Platform.get().loader())) cmd(mc, "reload");
+        var platform = io.github.profetgit.travelerslantern.platform.Platform.get();
+        if ("forge".equals(platform != null ? platform.loader() : TravelersLantern.loader())) cmd(mc, "reload");
         String p = name(mc);
         cmd(mc, "gamerule advance_time false", "gamerule advance_weather false", "gamerule spawn_mobs false", "gamerule spawn_monsters false",
             "gamerule send_command_feedback false", "gamerule immediate_respawn true", "time set 6000", "weather clear", "difficulty peaceful",
@@ -187,6 +206,10 @@ public final class Director {
             case "idle", "turn", "sneak", "fp" -> 90;
             case "walk", "light" -> 110;
             case "sprint", "jump" -> 120;
+            case "stop", "dodge" -> 100;
+            case "mute" -> 120;
+            case "colours" -> 66;
+            case "settings" -> 40;
             case "step" -> 70;
             case "death", "keep" -> 90;
             default -> 60;
@@ -272,6 +295,52 @@ public final class Director {
                 hold(o.keyShift, t < 70);
                 hold(o.keyUp, t > 10 && t < 60);
             }
+            case "stop" -> hold(o.keyUp, t < 40);
+            case "mute" -> {
+                if (t == 0) {
+                    Config.get().clinkVolume = 0;
+                    clinksAtStart = Swing.clinksPlayed;
+                    impactsAtStart = Swing.impacts;
+                }
+                hold(o.keyUp, t < 90);
+                hold(o.keySprint, t < 90);
+                hold(o.keyJump, t < 90 && t % 10 < 2);
+            }
+            case "colours" -> {
+                // each kind of lantern hung on the belt in turn (and taken off again); what the shader's held light gets is read once it hangs
+                String[] kinds = {"soul_lantern", "copper_lantern", "waxed_oxidized_copper_lantern", "lantern"};
+                if (t == 0 && !BeltClient.beltOf(mc.player).isEmpty()) KeyMapping.click(Keys.TOGGLE.getDefaultKey());
+                int k = (t - 2) / 14, at = (t - 2) % 14;
+                if (t >= 2 && k < kinds.length) {
+                    if (at == 0) cmd(mc, "clear " + name(mc), "give " + name(mc) + " minecraft:" + kinds[k]);
+                    if (at == 3) KeyMapping.click(Keys.TOGGLE.getDefaultKey());
+                    if (at == 11) {
+                        float[] ic = BeltClient.irisColor;
+                        colourLog.add(kinds[k] + (ic == null ? " none" : String.format(Locale.ROOT, " %.2f %.2f %.2f id %d", ic[0], ic[1], ic[2], BeltClient.irisId)));
+                        colourSeen.add(ic == null ? null : ic.clone());
+                        colourIds.add(BeltClient.irisId);
+                    }
+                    if (at == 12) KeyMapping.click(Keys.TOGGLE.getDefaultKey());
+                }
+            }
+            case "settings" -> {
+                if (t == 5) mc.gui.setScreen(new io.github.profetgit.travelerslantern.SettingsScreen(null));
+                if (t == 25) {
+                    boolean open = mc.gui.screen() instanceof io.github.profetgit.travelerslantern.SettingsScreen;
+                    check("screen_opens", open, "settings screen is " + (open ? "open" : String.valueOf(mc.gui.screen())));
+                    mc.gui.setScreen(null);
+                }
+            }
+            case "dodge" -> {
+                // sprint, then sudden turns, a sneak and a jump: every kind of hook movement in one go
+                hold(o.keyUp, t < 80);
+                hold(o.keySprint, t < 50);
+                hold(o.keyShift, t >= 36 && t < 46);
+                hold(o.keyJump, t >= 24 && t < 27);
+                float yaw = -90 + 100 * Mth.clamp((t - 14) / 2F, 0, 1) - 190 * Mth.clamp((t - 50) / 2F, 0, 1);
+                mc.player.setYRot(yaw);
+                mc.player.setYHeadRot(yaw);
+            }
             case "death", "keep" -> {
                 if (t == 2) KeyMapping.click(Keys.TOGGLE.getDefaultKey());
                 if (t == 25) cmd(mc, "kill " + name(mc));
@@ -296,6 +365,11 @@ public final class Director {
 
     static void finishScene(Minecraft mc, String s) {
         int drawn = BeltLayer.drawnLocal - drawnAtStart;
+        if (SMOOTH.contains(s)) {
+            check("smooth_swing", smoothFrames > 20 && snaps == 0 && maxOmega < MAX_OMEGA, String.format(Locale.ROOT,
+                "%d frames, biggest rod move in one frame %.1f deg (tick %d), fastest %.0f deg/s, sharpest change of speed %.0f deg/s2, %d frames over %.0f deg",
+                smoothFrames, maxStep, maxStepTick, maxOmega, maxAlpha, snaps, SNAP_DEG));
+        }
         switch (s) {
             case "hang" -> {
                 onServer(mc, "belt", sp -> Lanterns.is(io.github.profetgit.travelerslantern.BeltSlot.get(sp)), sp -> "server belt: " + io.github.profetgit.travelerslantern.BeltSlot.get(sp));
@@ -336,6 +410,23 @@ public final class Director {
                 check("twist", maxTwist > 8 && maxTwist < 111, String.format(Locale.ROOT, "lantern lagged the turn by up to %.1f deg", maxTwist));
             }
             case "sneak" -> check("drawn", drawn > 0, drawn + " lantern draws");
+            case "colours" -> {
+                if (!shadersOn()) {
+                    check("colours", true, "no shader pack: skipped");
+                } else {
+                    float[] soul = colourSeen.size() > 0 ? colourSeen.get(0) : null, copper = colourSeen.size() > 2 ? colourSeen.get(2) : null, plain = colourSeen.size() > 3 ? colourSeen.get(3) : null;
+                    boolean ok = soul != null && copper != null && plain != null && soul[2] > soul[0] && copper[1] > copper[0] && plain[0] > plain[2];
+                    check("colours", ok, "soul blue, copper green, lantern amber: " + String.join("; ", colourLog));
+                    boolean ids = colourIds.size() == 4 && colourIds.get(0) != 0 && colourIds.get(1) != 0 && colourIds.get(0) != colourIds.get(1) && colourIds.get(1).equals(colourIds.get(2));
+                    check("colour_ids", ids, "item ids handed to the shader pack (soul, copper, waxed oxidized copper, lantern): " + colourIds);
+                }
+                cmd(mc, "item replace entity " + name(mc) + " armor.body with air");
+            }
+            case "mute" -> {
+                int bumps = Swing.impacts - impactsAtStart, played = Swing.clinksPlayed - clinksAtStart;
+                Config.get().clinkVolume = 100;
+                check("muted", bumps > 0 && played == 0, bumps + " bumps hard enough to clink, " + played + " clinks played at volume 0");
+            }
             case "light" -> {
                 lightChecks(mc, "lit", false);
                 // walking on at night with the lantern swinging, then standing: the light around the player must not jump
@@ -346,6 +437,8 @@ public final class Director {
                 }
                 if (shadersOn()) {
                     check("iris", BeltClient.irisHeld > 0, BeltClient.irisHeld + " updates where the shader's off-hand light was the belt lantern");
+                    float[] ic = BeltClient.irisColor;
+                    check("iris_color", ic != null && ic[0] > ic[2], ic == null ? "no colour handed over" : String.format(Locale.ROOT, "the shader's held light is %.2f %.2f %.2f (amber for a lantern)", ic[0], ic[1], ic[2]));
                 }
                 long moved = DynamicLight.busyTicks - busyAtWalkEnd;
                 check("still_is_free", moved == 0, moved + " light rebuilds while standing still after the walk");
@@ -536,6 +629,24 @@ public final class Director {
             double side = Math.toDegrees(Math.atan2(Math.cos(yaw) * dx + Math.sin(yaw) * dz, -dy));
             double twist = Math.toDegrees(sw[8]);
             lastAngle = angle;
+            double simT = sw[9];
+            if (sceneTick >= 6 && !Double.isNaN(prevT) && simT - prevT > 1e-4 && simT - prevT < 0.2) {
+                double dt = simT - prevT, step = Math.toDegrees(Math.acos(Mth.clamp((dx * pdx + dy * pdy + dz * pdz) / Math.max(len * plen, 1e-9), -1, 1))), omega = step / dt;
+                if (step > maxStep) {
+                    maxStep = step;
+                    maxStepTick = sceneTick;
+                }
+                maxOmega = Math.max(maxOmega, omega);
+                if (smoothFrames > 0) maxAlpha = Math.max(maxAlpha, Math.abs(omega - prevOmega) / dt);
+                if (step > SNAP_DEG) snaps++;
+                prevOmega = omega;
+                smoothFrames++;
+            }
+            pdx = dx;
+            pdy = dy;
+            pdz = dz;
+            plen = len;
+            prevT = simT;
             if (sceneTick >= length(SCENES[scene]) - 20) {
                 restLo = Math.min(restLo, angle);
                 restHi = Math.max(restHi, angle);

@@ -12,7 +12,8 @@
   "entrypoints": {
     "main": [
       "io.github.profetgit.travelerslantern.platform.fabric.FabricEntry"
-    ]
+    ],
+    "modmenu": ["io.github.profetgit.travelerslantern.platform.fabric.ModMenuEntry"]
   },
   "mixins": ["travelers_lantern.mixins.json"],
   "depends": {
