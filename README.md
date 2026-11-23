@@ -5,7 +5,7 @@
 <a href="https://ko-fi.com/profetgit"><img src="https://raw.githubusercontent.com/ProfetGit/assets/main/buttons/kofi.webp" alt="Ko-fi" width="23.96%"></a>
 </p>
 
-**Your light, hands free.** Hang a lantern on your belt with one key. It lights your way wherever you walk, swings as you move, and leaves both hands free for your pickaxe, sword or shield. For Minecraft 26.2 and 26.3 on Fabric, NeoForge and Forge. It works on your client alone on any server, and with the mod on the server too, everyone sees each other's lanterns.
+**Your light, hands free.** Hang a lantern on your belt with one key. It lights your way wherever you walk, swings as you move, and leaves both hands free for your pickaxe, sword or shield. For Minecraft 26.3, 26.2, 26.1.2, 1.21.11, 1.21.1 and 1.20.1 on Fabric, Quilt, NeoForge and Forge. It works on your client alone on any server, and with the mod on the server too, everyone sees each other's lanterns.
 
 <p align="center">
 <img src="https://raw.githubusercontent.com/ProfetGit/travelers-lantern/main/docs/clips/hook.webp" alt="Press B: the lantern goes from your hand to your belt" width="49%">
@@ -44,7 +44,7 @@ The settings are in a screen (Mod Menu on Fabric and Quilt, the mod list on NeoF
 
 ![Installation](https://raw.githubusercontent.com/ProfetGit/travelers-lantern/main/docs/desc/title-installation.webp)
 
-Put the jar for your loader in your `mods` folder: Fabric, NeoForge or Forge, for Minecraft 26.2 and 26.3. No other mods needed. Before removing it from a server, take your lantern off (press B), or it waits in the hidden belt slot until the mod is back.
+Put the jar for your loader in your `mods` folder: Fabric, Quilt, NeoForge or Forge, for your Minecraft version (26.3, 26.2, 26.1.2, 1.21.11, 1.21.1 or 1.20.1; Quilt uses the Fabric jar). No other mods needed. Before removing it from a server, take your lantern off (press B), or it waits in the hidden belt slot until the mod is back.
 
 ![Good to know](https://raw.githubusercontent.com/ProfetGit/travelers-lantern/main/docs/desc/title-good-to-know.webp)
 
