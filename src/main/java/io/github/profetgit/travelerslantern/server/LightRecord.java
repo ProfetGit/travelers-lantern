@@ -36,7 +36,7 @@ public final class LightRecord extends SavedData {
         return List.copyOf(positions);
     }
 
-    //? if >=26.2 {
+    //? if >=26.1 {
     /** One type per dimension, cached: the storage keys by the type record. */
     private static SavedDataType<LightRecord> type(ServerLevel level) {
         String dim = level.dimension().identifier().toString().replace(':', '_').replace('/', '_');
@@ -48,8 +48,8 @@ public final class LightRecord extends SavedData {
         return level.getDataStorage().computeIfAbsent(type(level));
     }
     //?}
-    //? if >=1.21.5 <26.2 {
-    /*// One type per dimension, cached: the storage keys by the type record (its id is a string before 26.2).
+    //? if >=1.21.5 <26.1 {
+    /*// One type per dimension, cached: the storage keys by the type record (its id is a string before 26.1).
     private static SavedDataType<LightRecord> type(ServerLevel level) {
         String dim = level.dimension().identifier().toString().replace(':', '_').replace('/', '_');
         return TYPES.computeIfAbsent(dim, d -> new SavedDataType<>("travelers_lantern_lights_" + d,

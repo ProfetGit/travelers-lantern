@@ -29,6 +29,7 @@ stonecutter {
         version("1.21.11-forge", "1.21.11").buildscript = "build.forge-legacy.gradle.kts"
         legacy("1.20.1")
         target("26.2", "fabric", "neoforge", "forge")
+        target("26.1.2", "fabric", "neoforge", "forge")
         target("26.3", "fabric", "neoforge", "forge")
         vcsVersion = "26.3-fabric"
     }

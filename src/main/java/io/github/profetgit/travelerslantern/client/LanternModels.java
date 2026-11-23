@@ -1,6 +1,6 @@
 package io.github.profetgit.travelerslantern.client;
 
-//? if >=26.2 {
+//? if >=26.1 {
 import com.mojang.blaze3d.vertex.PoseStack;
 import java.util.IdentityHashMap;
 import java.util.Map;
@@ -43,7 +43,7 @@ public final class LanternModels {
     }
 }
 //?}
-//? if >=1.21.9 <26.2 {
+//? if >=1.21.9 <26.1 {
 /*import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.texture.OverlayTexture;

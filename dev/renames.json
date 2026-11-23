@@ -2,22 +2,27 @@
   {
     "regex": "net\\.minecraft\\.client\\.renderer\\.state\\.level\\.",
     "to": "net.minecraft.client.renderer.state.",
-    "when": "<26.2"
+    "when": "<26.1"
   },
   {
     "regex": "net\\.minecraft\\.util\\.LightCoordsUtil\\.getLightCoords\\(",
     "to": "net.minecraft.client.renderer.LevelRenderer.getLightColor(",
-    "when": "<26.2"
+    "when": "<26.1"
+  },
+  {
+    "regex": "net\\.minecraft\\.util\\.LightCoordsUtil\\.getLightCoords\\(",
+    "to": "net.minecraft.client.renderer.LevelRenderer.getLightCoords(",
+    "when": ">=26.1 <26.2"
   },
   {
     "regex": "import net\\.minecraft\\.util\\.LightCoordsUtil;",
     "to": "import net.minecraft.client.renderer.LightTexture;",
-    "when": "<26.2"
+    "when": "<26.1"
   },
   {
     "from": "LightCoordsUtil",
     "to": "LightTexture",
-    "when": "<26.2",
+    "when": "<26.1",
     "files": "^(BeltLayer|GhostLight|DynamicLight|Director|MpDirector)\\.java$"
   },
   {
@@ -28,18 +33,18 @@
   {
     "regex": "net/minecraft/client/renderer/state/level/",
     "to": "net/minecraft/client/renderer/state/",
-    "when": "<26.2"
+    "when": "<26.1"
   },
   {
     "from": "alignWithEntity",
     "to": "setup",
-    "when": "<26.2",
+    "when": "<26.1",
     "files": "^CameraMixin\\.java$"
   },
   {
     "regex": "travelerslantern\\$demoCam\\(float partial, CallbackInfo ci\\)",
     "to": "travelerslantern$demoCam(net.minecraft.world.level.Level level, Entity target, boolean detached, boolean mirrored, float partial, CallbackInfo ci)",
-    "when": "<26.2",
+    "when": "<26.1",
     "files": "^CameraMixin\\.java$"
   },
   {
@@ -231,5 +236,11 @@
     "to": "screens.OptionsSubScreen",
     "when": "<1.21",
     "files": "^SettingsScreen\\.java$"
+  },
+  {
+    "regex": "import net\\.minecraft\\.world\\.level\\.BlockAndTintGetter;",
+    "to": "import net.minecraft.client.renderer.block.BlockAndTintGetter;",
+    "when": ">=26.1 <26.2",
+    "files": "^IndigoLightMixin\\.java$"
   }
 ]
