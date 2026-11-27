@@ -71,6 +71,13 @@ tasks.withType(JavaCompile).configureEach {
     options.release = 17
 }
 
+// MixinGradle puts the refmap into the jars only when compileJava runs: an up-to-date or cached compile
+// ships a jar whose mixins find nothing in the game
+tasks.named('compileJava') {
+    outputs.upToDateWhen { false }
+    outputs.doNotCacheIf('mixin refmap') { true }
+}
+
 processResources {
     exclude 'fabric.mod.json', 'META-INF/neoforge.mods.toml'
     def p = [version: project.version.toString(), mc: '1.20.1', mc_next: '1.21', name: props['mod.name'],
@@ -87,16 +94,24 @@ processResources {
 jar {
     from(rootProject.file('../LICENSE'))
     manifest { attributes 'MixinConfigs': 'travelers_lantern.mixins.json' }
-    finalizedBy 'reobfJar'
 }
 
 tasks.named('jar') { finalizedBy 'reobfJar' }
+tasks.jarJar.configure {
+    archiveClassifier = ''
+    from(rootProject.file('../LICENSE'))
+    manifest { attributes 'MixinConfigs': 'travelers_lantern.mixins.json' }
+    finalizedBy 'reobfJarJar'
+}
+tasks.named('assemble') { dependsOn 'jarJar' }
+jar { archiveClassifier = 'slim' }
+reobf { jarJar { } }
+tasks.named('reobfJarJar') { finalizedBy 'publishForTests' }
 tasks.register('publishForTests', Copy) {
     from layout.buildDirectory.dir('libs')
     include 'travelers_lantern-*+1.20.1-forge.jar'
     into file('../versions/1.20.1-forge/build/libs')
 }
-tasks.matching { it.name == 'reobfJar' }.configureEach { finalizedBy 'publishForTests' }
 // NeoForge's 1.20.1 line (47.1.x) still loads Forge mods: the same jar is the NeoForge 1.20.1 build (mt.py boots it as the neoforge loader)
 tasks.register('publishNeoForgeCopy', Copy) {
     from layout.buildDirectory.dir('libs')
@@ -105,3 +120,7 @@ tasks.register('publishNeoForgeCopy', Copy) {
     into file('../versions/1.20.1-neoforge/build/libs')
 }
 tasks.named('publishForTests') { finalizedBy 'publishNeoForgeCopy' }
+
+// The shared Profet settings screen, nested in the jar (tools/ProfetSettings/STATUS.md)
+ext.profetMc = '1.20.1'
+apply from: '../../../tools/ProfetSettings/mod/consumer-fg6.gradle'

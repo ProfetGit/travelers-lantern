@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.22 — 2026-11-28
+
+- New settings screen, the one shared by Profet's mods: grouped options with descriptions, search, Quick setup presets (Default, Quiet, Faster), reset per option and in-game bug reports. Open it from Mod Menu (Fabric, Quilt), the mod list (NeoForge, Forge) or the golem button in the game menu.
+- Live previews in that screen on Minecraft 26.3: point at an option and a player in your own skin walks with the lantern, showing which hip it hangs on, the clinks (with their sound at your volume), the light, softer light in daylight and smooth light.
+
 ## 0.2.20 — 2026-11-23
 
 - New: Minecraft 1.21.11 and 26.1.2 on Fabric, Quilt, NeoForge and Forge.

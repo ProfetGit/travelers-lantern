@@ -232,12 +232,6 @@
     "when": "<1.21.2"
   },
   {
-    "regex": "screens\\.options\\.OptionsSubScreen",
-    "to": "screens.OptionsSubScreen",
-    "when": "<1.21",
-    "files": "^SettingsScreen\\.java$"
-  },
-  {
     "regex": "import net\\.minecraft\\.world\\.level\\.BlockAndTintGetter;",
     "to": "import net.minecraft.client.renderer.block.BlockAndTintGetter;",
     "when": ">=26.1 <26.2",

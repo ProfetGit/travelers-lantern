@@ -1,7 +1,7 @@
 package io.github.profetgit.travelerslantern.platform.forge;
 
 //? forge {
-/*import io.github.profetgit.travelerslantern.SettingsScreen;
+/*import io.github.profetgit.travelerslantern.ConfigHook;
 import net.minecraftforge.client.ConfigScreenHandler;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 
@@ -12,7 +12,7 @@ final class ForgeClient {
 
     static void register(FMLJavaModLoadingContext context) {
         context.registerExtensionPoint(ConfigScreenHandler.ConfigScreenFactory.class,
-            () -> new ConfigScreenHandler.ConfigScreenFactory((mc, parent) -> new SettingsScreen(parent)));
+            () -> new ConfigScreenHandler.ConfigScreenFactory((mc, parent) -> ConfigHook.create(parent)));
     }
 }
 *///?}

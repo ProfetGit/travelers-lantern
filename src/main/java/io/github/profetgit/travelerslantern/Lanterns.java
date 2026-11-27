@@ -27,7 +27,15 @@ public final class Lanterns {
      * light is a single brightness.
      */
     public static float[] color(ItemStack s) {
-        String id = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).getPath();
+        return colourOf(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).getPath());
+    }
+
+    /** The same colour for a placed lantern block (no item needed, so it works before a world has loaded). */
+    public static float[] flame(BlockState state) {
+        return colourOf(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).getPath());
+    }
+
+    private static float[] colourOf(String id) {
         if (id.contains("soul")) return new float[] {0.35F, 0.90F, 0.95F};
         if (id.contains("copper")) return new float[] {0.50F, 0.95F, 0.55F};
         return new float[] {1.00F, 0.78F, 0.40F};

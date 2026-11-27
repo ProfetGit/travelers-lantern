@@ -35,6 +35,7 @@ public final class BeltClient {
 
     public static void init() {
         Config.load(Minecraft.getInstance().gameDirectory.toPath());
+        io.github.profetgit.profetsettings.ProfetSettings.register(TravelersLantern.MOD_ID, BeltSettings::create);
     }
 
     public static boolean serverHasMod() {

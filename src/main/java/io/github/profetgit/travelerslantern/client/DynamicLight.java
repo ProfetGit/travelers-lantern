@@ -136,8 +136,8 @@ public final class DynamicLight {
                     if (Math.abs(bright - target) < 0.01F) bright = target;
                 }
                 AMBIENT.put(p.getId(), bright);
-                float light = base * (1 + (DIM - 1) * bright);
-                float radius = base * RADIUS_PER_LEVEL * (DARK_REACH + (DIM_REACH - DARK_REACH) * bright);
+                float light = levelIn(base, bright);
+                float radius = radiusIn(base, bright);
                 Lit was = LIT.get(p.getId());
                 // a lantern far from the camera shows little of its motion: it waits for a bigger move (fewer rebuilds)
                 double move = at.distanceToSqr(cam) > FAR * FAR ? FAR_MOVE : MOVE;
@@ -194,9 +194,29 @@ public final class DynamicLight {
         /*lv.updateSkyBrightness();
         *///?}
         BlockPos pos = BlockPos.containing(at);
-        int raw = Math.max(lv.getMaxLocalRawBrightness(pos), lv.getMaxLocalRawBrightness(pos.above()));
+        return brightness(Math.max(lv.getMaxLocalRawBrightness(pos), lv.getMaxLocalRawBrightness(pos.above())));
+    }
+
+    /** The world's light level at a lantern as 0 (dark) .. 1 (bright). */
+    public static float brightness(float raw) {
         float u = Math.max(0, Math.min(1, (raw - 4) / 8F));
         return u * u * (3 - 2 * u);
+    }
+
+    /** A lantern's light level in surroundings this bright. */
+    public static float levelIn(int base, float bright) {
+        return base * (1 + (DIM - 1) * bright);
+    }
+
+    /** A lantern's reach in blocks in surroundings this bright. */
+    public static float radiusIn(int base, float bright) {
+        return base * RADIUS_PER_LEVEL * (DARK_REACH + (DIM_REACH - DARK_REACH) * bright);
+    }
+
+    /** One lantern's light at a distance (squared) from it. */
+    public static float falloff(float level, float radius, double d2) {
+        double r2 = radius * radius;
+        return d2 >= r2 ? 0 : (float) (level * (1 - d2 / r2));
     }
 
     /** Test hook: a lantern's eased brightness of its surroundings (0 dark .. 1 bright), or -1. */
@@ -224,9 +244,7 @@ public final class DynamicLight {
         float best = 0;
         for (int i = 0; i < s.length; i += STRIDE) {
             double dx = x - s[i], dy = y - s[i + 1], dz = z - s[i + 2];
-            double d2 = dx * dx + dy * dy + dz * dz, r2 = s[i + 4] * s[i + 4];
-            if (d2 >= r2) continue;
-            best = Math.max(best, (float) (s[i + 3] * (1 - d2 / r2)));
+            best = Math.max(best, falloff(s[i + 3], s[i + 4], dx * dx + dy * dy + dz * dz));
         }
         return best;
     }

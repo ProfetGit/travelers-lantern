@@ -4,7 +4,7 @@ import io.github.profetgit.travelerslantern.platform.Platform;
 import java.nio.file.Path;
 import java.util.List;
 import net.minecraftforge.api.distmarker.Dist;
-import io.github.profetgit.travelerslantern.SettingsScreen;
+import io.github.profetgit.travelerslantern.ConfigHook;
 import net.minecraftforge.client.ConfigScreenHandler;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.ModLoadingContext;
@@ -21,7 +21,7 @@ public final class ForgeEntry implements Platform {
 
     private static void registerScreen() {
         ModLoadingContext.get().registerExtensionPoint(ConfigScreenHandler.ConfigScreenFactory.class,
-            () -> new ConfigScreenHandler.ConfigScreenFactory((mc, parent) -> new SettingsScreen(parent)));
+            () -> new ConfigScreenHandler.ConfigScreenFactory((mc, parent) -> ConfigHook.create(parent)));
     }
 
     @Override

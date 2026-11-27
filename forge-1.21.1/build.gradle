@@ -72,9 +72,20 @@ jar {
     manifest { attributes 'MixinConfigs': 'travelers_lantern.mixins.json' }
 }
 
-tasks.named('jar') { finalizedBy 'publishForTests' }
+tasks.jarJar.configure {
+    archiveClassifier = ''
+    from(rootProject.file('../LICENSE'))
+    manifest { attributes 'MixinConfigs': 'travelers_lantern.mixins.json' }
+    finalizedBy 'publishForTests'
+}
+tasks.named('assemble') { dependsOn 'jarJar' }
+jar { archiveClassifier = 'slim' }
 tasks.register('publishForTests', Copy) {
     from layout.buildDirectory.dir('libs')
     include 'travelers_lantern-*+1.21.1-forge.jar'
     into file('../versions/1.21.1-forge/build/libs')
 }
+
+// The shared Profet settings screen, nested in the jar (tools/ProfetSettings/STATUS.md)
+ext.profetMc = '1.21.1'
+apply from: '../../../tools/ProfetSettings/mod/consumer-fg6.gradle'

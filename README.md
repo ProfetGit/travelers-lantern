@@ -34,7 +34,7 @@ On a server without the mod the lantern stays an ordinary item in your inventory
 
 ![Settings](https://raw.githubusercontent.com/ProfetGit/travelers-lantern/main/docs/desc/title-settings.webp)
 
-The settings are in a screen (Mod Menu on Fabric and Quilt, the mod list on NeoForge and Forge) and in `config/travelers_lantern.json`: `clinks` and `clinkVolume` (0 to 100; 0 mutes the lantern on your belt), `softInDaylight` (off by default: on, the light is softer in bright places), `smoothLight` (off: the light moves a block at a time, which is lighter on slow computers), `lightUpdatesPerSecond` (20 to 60), `clientLight` (the lantern lights things at all), `leftSide` (which hip). On a server, operators can use `/travelerslantern light [true|false]` to turn the light off or on for players who don't have the mod.
+The settings are in a screen (the golem button in the game menu, Mod Menu on Fabric and Quilt, or the mod list on NeoForge and Forge) and in `config/travelers_lantern.json`: `clinks` and `clinkVolume` (0 to 100; 0 mutes the lantern on your belt), `softInDaylight` (off by default: on, the light is softer in bright places), `smoothLight` (off: the light moves a block at a time, which is lighter on slow computers), `lightUpdatesPerSecond` (20 to 60), `clientLight` (the lantern lights things at all), `leftSide` (which hip). On Minecraft 26.3 each option shows a live preview, with your own skin. On a server, operators can use `/travelerslantern light [true|false]` to turn the light off or on for players who don't have the mod.
 
 ![Compatibility](https://raw.githubusercontent.com/ProfetGit/travelers-lantern/main/docs/desc/title-compatibility.webp)
 

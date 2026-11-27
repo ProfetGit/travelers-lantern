@@ -148,6 +148,9 @@ public final class Director {
             mc.player.respawn();
             mc.gui.setScreen(null);
         }
+        //? if >=26.3 {
+        if (PreviewShots.titleTick(mc)) return;
+        //?}
         if (mc.level == null || mc.player == null) return;
         if (mc.getSingleplayerServer() == null) {
             MpDirector.onTick(mc);
@@ -183,6 +186,8 @@ public final class Director {
         tickScene(mc, SCENES[scene], sceneTick);
     }
 
+    private static boolean clinksWere;
+
     static void setup(Minecraft mc) {
         ModTestHook.audit();
         cmd(mc, ModTestHook.commands().toArray(String[]::new));
@@ -209,7 +214,12 @@ public final class Director {
             case "stop", "dodge" -> 100;
             case "mute" -> 120;
             case "colours" -> 66;
-            case "settings" -> 40;
+            case "settings" -> 70;
+            //? if >=26.3 {
+            case "previews" -> PreviewShots.length();
+            // the last scene: it leaves the world and ends the run itself
+            case "title" -> Integer.MAX_VALUE;
+            //?}
             case "step" -> 70;
             case "death", "keep" -> 90;
             default -> 60;
@@ -324,13 +334,39 @@ public final class Director {
                 }
             }
             case "settings" -> {
-                if (t == 5) mc.gui.setScreen(new io.github.profetgit.travelerslantern.SettingsScreen(null));
-                if (t == 25) {
-                    boolean open = mc.gui.screen() instanceof io.github.profetgit.travelerslantern.SettingsScreen;
-                    check("screen_opens", open, "settings screen is " + (open ? "open" : String.valueOf(mc.gui.screen())));
+                if (t == 5) mc.gui.setScreen(io.github.profetgit.travelerslantern.ConfigHook.create(null));
+                if (t == 30) {
+                    var hub = mc.gui.screen() instanceof io.github.profetgit.profetsettings.ProfetSettingsScreen h ? h : null;
+                    String sel = hub == null ? String.valueOf(mc.gui.screen()) : hub.debugSelected().id;
+                    check("screen_opens", TravelersLantern.MOD_ID.equals(sel), "settings screen shows " + sel);
+                    if (hub == null) break;
+                    var all = hub.debugSelected().all();
+                    check("rows", all.size() == 7 && all.stream().noneMatch(r -> r.label.contains("travelers_lantern") || r.desc.contains("travelers_lantern") || r.desc.startsWith("Format error")),
+                        all.size() + " rows: " + all.stream().map(r -> r.label).toList());
+                }
+                if (t == 36) still(mc, "screen");
+                if (t == 62) still(mc, "changed");
+                if (t == 38 && mc.gui.screen() instanceof io.github.profetgit.profetsettings.ProfetSettingsScreen hub) hub.debugRevealRow("clinks");
+                if (t == 48 && mc.gui.screen() instanceof io.github.profetgit.profetsettings.ProfetSettingsScreen hub) {
+                    clinksWere = Config.get().clinks;
+                    click(hub, hub.debugPoint("clinks", -1f));
+                }
+                if (t == 52) {
+                    check("switch_saves", Config.get().clinks != clinksWere && savedConfig(mc).contains("\"clinks\": " + !clinksWere),
+                        "clinks " + clinksWere + " -> " + Config.get().clinks);
+                }
+                if (t == 64) {
+                    Config.get().clinks = clinksWere;
+                    Config.save();
                     mc.gui.setScreen(null);
                 }
             }
+            //? if >=26.3 {
+            case "previews" -> PreviewShots.tick(mc, t);
+            case "title" -> {
+                if (t == 2) PreviewShots.leave(mc);
+            }
+            //?}
             case "dodge" -> {
                 // sprint, then sudden turns, a sneak and a jump: every kind of hook movement in one go
                 hold(o.keyUp, t < 80);
@@ -351,6 +387,20 @@ public final class Director {
             }
         }
         if ((s.equals("walk") || s.equals("sprint") || s.equals("jump")) && t > 10 && t < 60) walkAngle = Math.max(walkAngle, lastAngle);
+    }
+
+    private static void click(io.github.profetgit.profetsettings.ProfetSettingsScreen hub, int[] p) {
+        if (p == null) return;
+        hub.debugPress(p[0], p[1]);
+        hub.debugRelease(p[0], p[1]);
+    }
+
+    private static String savedConfig(Minecraft mc) {
+        try {
+            return java.nio.file.Files.readString(mc.gameDirectory.toPath().resolve("config").resolve("travelers_lantern.json"));
+        } catch (java.io.IOException e) {
+            return e.toString();
+        }
     }
 
     static void hold(KeyMapping k, boolean down) {
@@ -658,11 +708,19 @@ public final class Director {
         }
         timing.add(line);
         if (!FRAMES) return;
-        Path out = dir.resolve(String.format("f%05d.png", n));
+        write(mc, dir.resolve(String.format("f%05d.png", n)));
+    }
+
+    /** One still of a screen, written with or without frame recording. */
+    static void still(Minecraft mc, String name) {
+        write(mc, OUT.resolve(SCENES[scene]).resolve(name + ".png"));
+    }
+
+    private static void write(Minecraft mc, Path out) {
         pending.incrementAndGet();
         io.github.profetgit.travelerslantern.Compat.screenshot(mc.gameRenderer.mainRenderTarget(), (NativeImage img) -> WRITER.execute(() -> {
             try (img) {
-                Files.createDirectories(dir);
+                Files.createDirectories(out.getParent());
                 img.writeToFile(out);
             } catch (Exception e) {
                 System.out.println("[bldemo] write failed " + out + ": " + e);

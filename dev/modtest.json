@@ -12,7 +12,8 @@
     "travelers_lantern.tune.friction": "{friction}",
     "travelers_lantern.tune.bounce": "{bounce}",
     "travelers_lantern.demo.smooth": "{smooth}",
-    "travelers_lantern.demo.rate": "{rate}"
+    "travelers_lantern.demo.rate": "{rate}",
+    "travelers_lantern.demo.dense": "{dense}"
   },
   "defaults": {
     "frames": "false",
@@ -23,7 +24,8 @@
     "friction": "0.5",
     "bounce": "0.15",
     "smooth": "",
-    "rate": ""
+    "rate": "",
+    "dense": ""
   },
   "world": "dev/demo/.work/world-{mc}",
   "world_fallback": "dev/demo/.work/world-26.3",
@@ -46,17 +48,20 @@
     "stop",
     "mute",
     "settings",
+    "previews",
     "light",
     "step",
     "off",
     "death",
     "keep",
-    "colours"
+    "colours",
+    "title"
   ],
   "smoke": [
     "hang",
     "walk",
-    "off"
+    "off",
+    "settings"
   ],
   "addons": {
     "fa": {

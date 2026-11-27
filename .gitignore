@@ -22,3 +22,4 @@ dev/icon/banner_frames60/
 forge-*/build/
 forge-*/run/
 forge-*/.gradle/
+dev/preview/out/

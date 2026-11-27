@@ -80,6 +80,9 @@ public final class Swing {
     /** Frames when this swing was last drawn, and last stepped (drawn in the world pass). */
     int seen, stepped = -1000;
     double lastClink = -10, impact;
+    /** The settings preview's pendulum: no ground under it and no sound; a bump hard enough to clink is left in `bumped`. */
+    private boolean preview;
+    private double bumped = -1;
     /** The rod as drawn: unit direction in world space, its twist, and the time it was last moved. */
     final Vector3f shown = new Vector3f(0, -1, 0);
     double shownTwist, shownT = -1;
@@ -96,6 +99,25 @@ public final class Swing {
     }
 
     private Swing() {
+    }
+
+    static Swing preview() {
+        Swing s = new Swing();
+        s.preview = true;
+        return s;
+    }
+
+    /** Steps a preview pendulum; returns the rotation as orient() does. */
+    Quaternionf previewStep(double now, float bodyRotDeg, double ox, double oy, double oz, Matrix4fc hook, Matrix4fc toWorld, Box[] boxes,
+                            float length, float radius, double walkPhase, double walkAmp, float side) {
+        bumped = -1;
+        step(now, bodyRotDeg, ox, oy, oz, hook, toWorld, boxes, length, radius, walkPhase, walkAmp, side);
+        return new Quaternionf().rotationTo(0, 1, 0, local.x, local.y, local.z).rotateY(twist);
+    }
+
+    /** The strength (0 to 1) of a clink in the last preview step, or -1. */
+    double previewBump() {
+        return bumped;
     }
 
     public static void newFrame() {
@@ -246,8 +268,14 @@ public final class Swing {
                 yawVel = 0;
             }
             if (impact > CLINK_SPEED && now - lastClink > 0.35) {
-                impacts++;
-                if (Config.get().clinks && Config.get().clinkVolume > 0) clink(now, Math.min(1, (impact - CLINK_SPEED) / 1.5));
+                double strength = Math.min(1, (impact - CLINK_SPEED) / 1.5);
+                if (preview) {
+                    lastClink = now;
+                    bumped = strength;
+                } else {
+                    impacts++;
+                    if (Config.get().clinks && Config.get().clinkVolume > 0) clink(now, strength);
+                }
             }
             t = now;
             phase = walkPhase;
@@ -400,7 +428,7 @@ public final class Swing {
     /** Keeps the weight above solid ground (a bed, the floor of a crawl space). */
     private void ground(float radius, double hs) {
         ClientLevel lv = level;
-        if (lv == null) return;
+        if (lv == null || preview) return;
         BlockPos at = BlockPos.containing(bx, by - radius, bz);
         BlockState st = lv.getBlockState(at);
         if (st.isAir()) return;
@@ -418,8 +446,13 @@ public final class Swing {
         if (lv == null) return;
         lastClink = now;
         clinksPlayed++;
-        lv.playLocalSound(bx, by, bz, SoundEvents.LANTERN_HIT, SoundSource.PLAYERS, (float) ((0.05 + 0.1 * strength) * Config.get().clinkVolume / 100.0),
+        lv.playLocalSound(bx, by, bz, SoundEvents.LANTERN_HIT, SoundSource.PLAYERS, loudness(strength),
             1.6F + (float) (Math.random() * 0.3), false);
+    }
+
+    /** A clink's volume for a bump this hard (0 to 1) at the player's volume setting. */
+    public static float loudness(double strength) {
+        return (float) ((0.05 + 0.1 * strength) * Config.get().clinkVolume / 100.0);
     }
 
     private static double sq(double x, double y, double z) {
