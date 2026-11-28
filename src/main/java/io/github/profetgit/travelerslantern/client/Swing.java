@@ -408,6 +408,10 @@ public final class Swing {
         if (shape.isEmpty()) return;
         double top = at.getY() + shape.max(Direction.Axis.Y);
         if (by - radius >= top) return;
+        // a block with more block above it is a wall the weight swung into, not ground: lifting the weight onto its
+        // top threw it up the wall and the rod pulled it back every step
+        BlockPos above = at.above();
+        if (!lv.getBlockState(above).getCollisionShape(lv, above).isEmpty()) return;
         double vy = Math.max(0, (by - py) / hs);
         by = top + radius;
         py = by - vy * hs;
